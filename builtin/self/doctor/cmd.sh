@@ -4,9 +4,9 @@ cb::config_load
 cb::plugins_load
 
 errors=0 warnings=0
-ok() { printf '  %s✔%s %s\n' "$UI_GREEN" "$UI_RESET" "$*"; }
-ko() { printf '  %s✖%s %s\n' "$UI_RED" "$UI_RESET" "$*"; ((errors++)); }
-wa() { printf '  %s⚠%s %s\n' "$UI_YELLOW" "$UI_RESET" "$*"; ((warnings++)); }
+ok() { printf '  %s✓%s %s\n' "$UI_GREEN" "$UI_RESET" "$*"; }
+ko() { printf '  %s✗%s %s\n' "$UI_RED" "$UI_RESET" "$*"; ((errors++)); }
+wa() { printf '  %s!%s %s\n' "$UI_YELLOW" "$UI_RESET" "$*"; ((warnings++)); }
 rel() { printf '%s' "${1#"$CB_ROOT"/}"; }
 
 # Checks one `example` of a command the way the parser would see it. <top> and <name>:

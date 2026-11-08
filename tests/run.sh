@@ -16,7 +16,7 @@ check() { # description, command, substring expected in the output (stdout+stder
     ((pass++))
   else
     ((fail++))
-    printf '✖ %s\n    command : %s\n    expected: %s\n    got     : %s\n' "$1" "$2" "$3" "${out//$'\n'/$'\n'              }"
+    printf '✗ %s\n    command : %s\n    expected: %s\n    got     : %s\n' "$1" "$2" "$3" "${out//$'\n'/$'\n'              }"
   fi
 }
 status() { eval "$1" >/dev/null 2>&1; echo $?; }
@@ -30,7 +30,7 @@ need() {
     ((pass++))
   else
     ((fail++))
-    printf '✖ docs: %s is not documented in %s (expected to find: %s)\n' "$1" "$2" "$3"
+    printf '✗ docs: %s is not documented in %s (expected to find: %s)\n' "$1" "$2" "$3"
   fi
 }
 
@@ -111,7 +111,7 @@ doc_checks() {
         ((pass++))
       else
         ((fail++))
-        printf '✖ docs: broken link in %s: %s\n' "$md" "$link"
+        printf '✗ docs: broken link in %s: %s\n' "$md" "$link"
       fi
     done < <(grep -oE '\]\([^)]+\)' "$md")
   done < <(printf '%s\n' AGENTS.md .github/copilot-instructions.md docs/*.md docs/decisions/*.md)
@@ -124,7 +124,7 @@ doc_checks() {
       ((pass++))
     else
       ((fail++))
-      printf '✖ docs: docs/handoff.md references unknown commit %s\n' "$sha"
+      printf '✗ docs: docs/handoff.md references unknown commit %s\n' "$sha"
     fi
   fi
   cd - >/dev/null || return 1
@@ -725,6 +725,11 @@ check "deps: package names quoted"             "pmc apt install 'a;b'" "apt-get 
 check "deps: no requires in core/ and builtin/" \
   "grep -rnE '^[[:space:]]*requires[[:space:]]' '$ROOT'/core '$ROOT'/builtin | wc -l" "0"
 
+# Output symbols: none with an emoji variant (✔ ✖ ⚠…): some terminals (Windows Terminal)
+# draw those two columns wide, over the next character.
+check "no emoji-capable symbols in the output" \
+  "grep -rn \$'\\u2714\\|\\u2716\\|\\u26a0\\|\\u2705\\|\\u274c\\|\\u2139' '$ROOT'/lib '$ROOT'/builtin '$ROOT'/core '$ROOT'/templates '$ROOT'/main.sh '$ROOT'/init.sh | wc -l" "0"
+check "ui symbols are single-width ones"       "tt self plugins disable nope 2>&1" "✗ plugin not found: nope"
 # Repository language: no French left in code comments
 check "code comments are in English" \
   "grep -rnE '^[[:space:]]*#.*( : |[àâçéèêëîïôûùüÿœ])' '$ROOT'/{lib,builtin,core,templates,main.sh,init.sh} | wc -l" "0"
