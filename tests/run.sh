@@ -333,6 +333,17 @@ printf '%s\n' 'alias a=1' '' '# >>> cmd-builder: zz >>>' 'export X=1' '# <<< cmd
 check "uninstall: complete block removed"      "bash '$TMP/app/init.sh' --uninstall zz >/dev/null 2>&1; cat '$HOME/.bashrc'" $'alias a=1\nalias b=2'
 rm -f "$HOME/.bashrc"
 
+# init.sh install: how to load completion in the current terminal
+zzblock=$'# >>> cmd-builder: zz >>>\n# <<< cmd-builder: zz <<<'
+printf '%s\n' "$zzblock" >"$HOME/.bashrc"
+check "install: source hint for bash"          "SHELL=/bin/bash bash '$TMP/app/init.sh' zz" "source ~/.bashrc"
+printf '%s\n' "$zzblock" >"$HOME/.zshrc"
+check "install: source hint for the user's shell" "SHELL=/bin/zsh bash '$TMP/app/init.sh' zz" "source ~/.zshrc"
+rm -f "$HOME/.bashrc" "$HOME/.zshrc"
+check "install: no hint when no rc configured"  "SHELL=/bin/bash bash '$TMP/app/init.sh' zz | grep -c 'source '" "0"
+bash "$TMP/app/init.sh" --uninstall zz >/dev/null 2>&1
+rm -f "$HOME/.bashrc" "$HOME/.zshrc"
+
 # Repository language: no French left in code comments
 check "code comments are in English" \
   "grep -rnE '^[[:space:]]*#.*( : |[àâçéèêëîïôûùüÿœ])' '$ROOT'/{lib,builtin,core,templates,main.sh,init.sh} | wc -l" "0"

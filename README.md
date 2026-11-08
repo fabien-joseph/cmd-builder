@@ -21,7 +21,8 @@ cd cmd-builder
 
 `init.sh` creates `~/.local/bin/mu` (a symlink to `main.sh`, no sudo), the config
 `~/.config/mu/config`, and offers to enable completion in `~/.bashrc` / `~/.zshrc`.
-Running it again is safe.
+Running it again is safe. The current terminal read its rc file before the install, so open a
+new terminal or run the `source ~/.bashrc` (or `~/.zshrc`) line it prints to get completion.
 
 ### Uninstall
 
