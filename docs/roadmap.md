@@ -21,7 +21,8 @@ Keep this file current: move items to **Done** when shipped, add follow-ups you 
 - Tests never wait on the real terminal (`_CB_TTY`, decision 0009); "yes" paths tested.
 - `self guide`: Markdown guide for AI chats without access to the machine, built from
   `templates/ai-guide.md` + `docs/plugin-authoring.md`; its worked example is run by the
-  tests (decision 0010).
+  tests (decision 0010). Rules refined by three evaluation rounds with small models
+  (method in `docs/testing.md`).
 
 ## Next
 
@@ -41,8 +42,8 @@ Keep this file current: move items to **Done** when shipped, add follow-ups you 
   another plugin name, or to `self new --core` (files in the cmd-builder repository).
 - `self guide <request>`: put the user's request at the end of the guide, ready to paste
   as a single message.
-- `self guide` in French (or other languages) for the AI-facing text; today the AI is told
-  to answer in the user's language.
+- `self guide` in French (or other languages) for the AI-facing text; today the guide is in
+  English and tells the AI to talk in the user's language (file texts stay in English).
 - Repeatable flags (`--tag a --tag b`) / list type.
 - Inherited flags (a flag declared on a parent available to all subcommands).
 - Command aliases (`about`-level `alias ls` for `list`).
