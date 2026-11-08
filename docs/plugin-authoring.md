@@ -4,6 +4,11 @@ The contract between cmd-builder and the commands it runs. **This is a public AP
 plugins written by users rely on it, so changes must stay backward compatible.
 (A user-facing summary lives in `README.md`; keep both in sync.)
 
+Everything between the `guide:begin` / `guide:end` markers below is also embedded, as is,
+in the guide printed by `mu self guide` (for AI assistants without access to the machine):
+keep it self-contained (no relative links) and keep the markers.
+
+<!-- guide:begin -->
 ## Layout
 
 ```
@@ -39,6 +44,78 @@ arg  <name> "description" [options]
 example "<command line without the root name>" ["explanation"]
 ```
 
+### Required and optional fields
+
+`flags.sh` itself is optional: without it (a `cmd.sh` alone), the command takes no option
+and no argument. Every line is optional too; only the fields of a line that is written are
+checked.
+
+| Line | Required fields, in this order | Optional |
+|---|---|---|
+| `about "text"` | the text | the whole line (no summary in lists and `--help`) |
+| `description "text"` | the text (several lines allowed) | the whole line |
+| `flag` | name, type, description | short form `-x` (between name and type), options |
+| `arg` | name, description | options |
+| `example` | command line, without the root name | explanation |
+
+- Options of `flag` and `arg` come **after the description**, in any order.
+- A description may be empty (`""`), but it cannot be left out: `flag verbose bool` is an
+  error.
+- Lines may come in any order, except that `arg` lines define the order of the positionals.
+- An `arg` is **required unless `--optional`** is given.
+- `flags.sh` is Bash: quote texts containing spaces, `#` starts a comment, `$` is expanded
+  inside double quotes (use single quotes for a literal `$`), functions may be defined (for
+  `--choices-from`).
+
+### Complete example
+
+Every kind of line, with the values `cmd.sh` receives:
+
+<!-- flags-example:begin -->
+```bash
+# flags.sh of "mu backup db restore"
+about "Restore a database"
+description "Restores a dump file into a database.
+Asks for confirmation before overwriting existing tables."
+
+#    name     short  type    description              options
+flag verbose  -v     bool    "Verbose output"
+flag yes      -y     bool    "Do not ask for confirmation"
+flag format   -f     string  "Dump format"            --choices "sql csv" --default sql
+flag jobs     -j     int     "Parallel jobs"          --default 2
+flag token           string  "Access token"           --required
+flag host            string  "Database server"        --choices-from _hosts
+
+#   name     description              options
+arg db       "Database to restore"    --choices "prod staging"
+arg dump     "Dump file"              --optional
+arg tables   "Tables to restore"      --optional --variadic
+
+example "backup db restore prod dump.sql --token T" "Restore prod from dump.sql"
+example "backup db restore staging -y -j 4 --token T" "Without confirmation, 4 jobs"
+
+# Values offered by Tab for --host (one per line, optional TAB + description).
+_hosts() { printf '%s\t%s\n' db1 "Primary" db2 "Replica"; }
+```
+<!-- flags-example:end -->
+
+`mu backup db restore prod dump.sql users orders --token T -v` runs `cmd.sh` with:
+
+<!-- flags-values:begin -->
+```text
+FLAG_VERBOSE=1
+FLAG_YES=0
+FLAG_FORMAT=sql
+FLAG_JOBS=2
+FLAG_TOKEN=T
+FLAG_HOST=
+ARG_DB=prod
+ARG_DUMP=dump.sql
+ARG_TABLES=users orders
+$@=prod dump.sql users orders
+```
+<!-- flags-values:end -->
+
 ### `about`, `description`, `example`
 
 - `about` — one line, shown everywhere the command is listed.
@@ -60,11 +137,13 @@ Name: `^[a-z0-9][a-z0-9-]*$`. Optional short form `-x` (one letter or digit). Ty
 |---|---|
 | `--default <v>` | default value (`0` or `1` for a bool; validated against type and `--choices`) |
 | `--required` | the flag must be given (not for bools) |
-| `--choices "a b c"` | fixed allowed values: validated, offered by completion |
+| `--choices "a b c"` | fixed allowed values, separated by spaces (a value cannot contain a space): validated, offered by completion |
 | `--choices-from "<cmd>"` | values computed at completion time (see below) |
 | `--strict` | with `--choices-from` only: also validate the given value |
 
 `--help` and `-h` are reserved. A flag name or short form can only be declared once.
+A `bool` accepts only `--default 0|1`: `--required`, `--choices` and `--choices-from` are
+errors on it. Without `--default`, an absent `string` / `int` flag is empty.
 
 ### `arg`
 
@@ -77,7 +156,8 @@ Name: `^[a-z0-9][a-z0-9_-]*$`. Positional, in declaration order.
 | `--choices "a b c"` | fixed allowed values |
 | `--choices-from "<cmd>"` / `--strict` | same as for `flag` |
 
-Without a variadic arg, extra positionals are an error.
+Without a variadic arg, extra positionals are an error. An optional arg that is not given
+is empty. A variadic arg without `--optional` needs at least one value.
 
 ### Dynamic choices: `--choices-from`
 
@@ -107,7 +187,7 @@ unless `-5` is a declared short flag. `-` alone is a positional.
 | Variable | Content |
 |---|---|
 | `FLAG_<NAME>` | flag value; name upper-cased, `-` → `_` (`--dry-run` → `FLAG_DRY_RUN`); bools are `0`/`1`; unset string flags are empty |
-| `ARG_<NAME>` | arg value (variadic: values joined with spaces — prefer `"$@"`) |
+| `ARG_<NAME>` | arg value, same name conversion (`my-file` → `ARG_MY_FILE`); empty when an optional arg is not given; variadic: values joined with spaces — prefer `"$@"` |
 | `"$@"` | all positionals, options removed |
 | `CB_NAME` | root command name (`mu`) |
 | `CB_COMMAND` | full command path (`mu backup db restore`) |
@@ -136,3 +216,4 @@ Colours for stdout: `UI_BOLD`, `UI_DIM`, `UI_RED`, `UI_GREEN`, `UI_YELLOW`, `UI_
 `UI_CYAN`, `UI_RESET` — empty when stdout is not a terminal or `NO_COLOR` is set.
 
 Messages go to stderr so stdout stays pipeable.
+<!-- guide:end -->

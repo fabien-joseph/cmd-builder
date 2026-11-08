@@ -18,7 +18,8 @@ Run only the doc checks with `./tests/run.sh --docs` (fast, no temp copy).
 
 ## How the end-to-end suite works
 
-1. Copies `main.sh`, `lib/`, `builtin/`, `core/`, `templates/` into a temp directory
+1. Copies `main.sh`, `init.sh`, `lib/`, `builtin/`, `core/`, `templates/` and
+   `docs/plugin-authoring.md` (embedded by `self guide`) into a temp directory
    (the real `plugins/` is never touched).
 2. Creates an isolated `HOME`, `XDG_CONFIG_HOME` and `PATH`, with a symlink `tt` → `main.sh`
    (so the root command is named `tt`), and sets `NO_COLOR=1`.
@@ -60,6 +61,7 @@ They extract facts from the code and fail when the docs do not mention them:
 | DSL keywords (`about`, `flag`, …) and their options (`--default`, `--choices-from`, …) — `lib/spec.sh` | `docs/plugin-authoring.md` |
 | Exported `CB_*` variables — `main.sh`, `lib/router.sh` | `docs/plugin-authoring.md` |
 | `ui::` helpers — `lib/ui.sh` | `docs/plugin-authoring.md` |
+| `guide:begin` / `guide:end` markers (part embedded by `self guide`), `flags-example` / `flags-values` markers (complete example, run by the tests) | `docs/plugin-authoring.md` |
 | `self` commands — `builtin/self/` | `docs/architecture.md` and `README.md` |
 | Config directives — `lib/config.sh` | `docs/architecture.md` and `README.md` |
 | Files in `lib/` | `docs/architecture.md` |
@@ -69,6 +71,20 @@ They extract facts from the code and fail when the docs do not mention them:
 
 When a check fails, document the new thing — do not weaken the check.
 
+## The guide of `self guide`
+
+The `# Guide for AI assistants` block of the end-to-end suite generates the guide and:
+
+- runs `contract_checks` on it: the same DSL / `CB_*` / `ui::` facts as for
+  `docs/plugin-authoring.md` must appear in the guide;
+- extracts the ```` ```bash ```` blocks between `<!-- example:begin -->` and
+  `<!-- example:end -->` of the **generated** guide and runs them in the sandbox, then
+  checks the outputs. If you change the worked example of `templates/ai-guide.md`, keep it
+  runnable as it is (no placeholder output, no prompt) and update the expected outputs.
+- extracts the complete `flags.sh` example of `docs/plugin-authoring.md` (`flags-example`
+  markers) from the guide, installs it as `tt backup db restore`, and checks that `cmd.sh`
+  receives exactly the values listed between the `flags-values` markers.
+
 ## Not covered yet
 
 - zsh completion (`templates/completion.zsh`) is not exercised automatically (zsh was not
@@ -76,3 +92,38 @@ When a check fails, document the new thing — do not weaken the check.
 - `self update` against real remotes: tested manually with local bare repositories
   (see the recipe in `docs/roadmap.md`).
 - macOS: never run in CI.
+
+## Evaluating the guide with real AI models (manual)
+
+The tests prove that the guide is complete and that its examples run; they cannot prove
+that an AI *follows* it. After a significant change to `templates/ai-guide.md`, evaluate it
+by hand with small models (the weakest available, e.g. Haiku):
+
+1. Generate the guide in an isolated `HOME` (see `AGENTS.md`): `mu self guide -o <file>`.
+2. Give it to several sub-agents that play a chat assistant without access to the machine
+   (allowed to read the guide and to write their answer to a file, nothing else), each with
+   a different request. If they would ask questions, they write them, then a line
+   `--- USER: ok ---`, then the full answer as if the user accepted their suggestions.
+3. Run the `bash` blocks of each answer (after the `ok` line) in a fresh copy of the project
+   with an isolated `HOME`, `_CB_TTY=/dev/null` and a timeout, with the install path
+   replaced by the copy's path; then `mu self doctor` and try edge cases by hand.
+4. Check: questions only when needed and each with a default; texts of the files in English;
+   no assumption beyond the *Setup* table; existing and official plugins left alone;
+   confirmation for destructive actions; the commands really work.
+
+Requests worth keeping in the set: a destructive command (`git clean-branches`), a request
+on an official plugin (`system disk`, which must not create `plugins/system/`), a vague
+request ("my backups"), an external tool (`docker`), decimal or negative values (the DSL
+has no float type), the editor format ("give me the file contents"), dynamic data stored in
+`CB_CONFIG_DIR` (notes), and root privileges (ports with process names).
+
+To check commands that need services the machine does not have (databases, a JDK), run
+them **only on your side**, never in the sub-agents (they play a chat AI with no access
+to anything). Without root, Debian packages can be used from a scratch directory:
+`apt-get download <pkg>` then `dpkg-deb -x <pkg>.deb <root>` (PostgreSQL, MariaDB,
+OpenJDK and their missing libraries, found with `ldd`), `LD_LIBRARY_PATH=<root>/usr/lib/...`,
+PostgreSQL with `initdb` + `pg_ctl -o "-p <port> -c unix_socket_directories="` (socket
+paths are limited to 107 bytes), MariaDB with `mariadb-install-db` + `mariadbd
+--no-defaults --port=<port> --socket=<short path>`. Copy `/etc/java-*` into the JDK's
+`conf/` (its files are symlinks to `/etc`). Jars for `javac -cp` come from Maven Central.
+Stop the servers and delete the directory afterwards.

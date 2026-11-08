@@ -26,9 +26,9 @@ lib/                 the framework (sourced, never executed directly; lib/run.sh
 builtin/self/        built-in commands "<name> self …", written with the framework itself
 core/                official plugins, versioned in this repo (id core:<plugin>)
 plugins/             user plugins, git-ignored, often their own git repos (id user:<plugin>)
-templates/           completion script templates (placeholders __CB_NAME__, __CB_FUNC__)
+templates/           completion script templates and the AI guide of "self guide" (placeholders __CB_*__)
 tests/run.sh         all tests: end-to-end + doc consistency checks (--docs: docs only)
-docs/                contributor documentation (English)
+docs/                contributor documentation (English); plugin-authoring.md also ships in "self guide"
 README.md            user documentation
 ```
 
@@ -74,6 +74,8 @@ Anything you create under `plugins/` while testing must be removed afterwards
       `CB_*` variable, `ui::` helper, `self` command, config directive and `lib/` file).
 - [ ] New behaviour has tests.
 - [ ] Docs updated: `docs/` **and** `README.md` if users see the change.
+- [ ] Plugin contract or `self new` changed → the guide still reads well:
+      `mu self guide` (built from `templates/ai-guide.md` + `docs/plugin-authoring.md`).
 - [ ] A new `docs/decisions/NNNN-*.md` exists if you made an architectural choice, and it is
       listed in `docs/decisions/README.md`.
 - [ ] `docs/roadmap.md` updated (move done items, add discovered follow-ups).
@@ -109,6 +111,7 @@ lost**: the next agent (any tool, any model) must be able to continue from the f
    |---|---|
    | `lib/`, `main.sh`, routing, globals, exit codes, completion, config, install layout | `docs/architecture.md` |
    | DSL, `FLAG_*` / `ARG_*` / `CB_*`, `ui::` helpers, plugin layout | `docs/plugin-authoring.md` **and** `README.md` |
+| How an AI should answer users, the worked example, `self new` | `templates/ai-guide.md` (output of `self guide`) |
    | A coding rule, a portability constraint, a naming convention | `docs/conventions.md` |
    | Test infrastructure or how to test something | `docs/testing.md` |
    | A structural choice (taken *or* rejected, even only in discussion) | new `docs/decisions/NNNN-*.md` + index |

@@ -22,8 +22,11 @@ check() { # description, command, substring expected in the output (stdout+stder
 status() { eval "$1" >/dev/null 2>&1; echo $?; }
 
 # need <fact description> <file> <literal text that must appear in the file>
+# (file relative to the repository, or absolute)
 need() {
-  if grep -qF -- "$3" "$ROOT/$2" 2>/dev/null; then
+  local f=$2
+  [[ $f == /* ]] || f=$ROOT/$f
+  if grep -qF -- "$3" "$f" 2>/dev/null; then
     ((pass++))
   else
     ((fail++))
@@ -35,28 +38,41 @@ need() {
 # Doc consistency: facts extracted from the code must be mentioned in the docs.
 # When a check fails, document the new thing — do not weaken the check.
 # ---------------------------------------------------------------------------
-doc_checks() {
-  local kw opt v h d cmd k f md dir link
-  cd "$ROOT" || return 1
+# contract_checks <file>: the plugin contract extracted from the code (DSL keywords and
+# options, CB_* variables, ui:: helpers) is fully described in <file>. Used for
+# docs/plugin-authoring.md and for the guide printed by "self guide".
+contract_checks() {
+  local file=$1 kw opt v h
   # DSL keywords: top-level functions of lib/spec.sh (about, flag, arg…).
-  for kw in $(grep -oE '^[a-z]+\(\)' lib/spec.sh | tr -d '()'); do
-    need "DSL keyword '$kw'" docs/plugin-authoring.md "\`$kw"
+  for kw in $(grep -oE '^[a-z]+\(\)' "$ROOT/lib/spec.sh" | tr -d '()'); do
+    need "DSL keyword '$kw'" "$file" "\`$kw"
   done
 
   # DSL options: case patterns of lib/spec.sh (--default, --choices-from…).
-  for opt in $(grep -E '^ +--[a-z-]+( \| --[a-z-]+)*\)' lib/spec.sh | grep -oE -- '--[a-z-]+' | sort -u); do
-    need "DSL option '$opt'" docs/plugin-authoring.md "\`$opt"
+  for opt in $(grep -E '^ +--[a-z-]+( \| --[a-z-]+)*\)' "$ROOT/lib/spec.sh" | grep -oE -- '--[a-z-]+' | sort -u); do
+    need "DSL option '$opt'" "$file" "\`$opt"
   done
 
   # Public CB_* variables exported to commands.
-  for v in $(grep -hE '^ *export ' main.sh lib/router.sh | grep -oE '(^|[^_A-Za-z])CB_[A-Z_]+' | grep -oE 'CB_[A-Z_]+' | sort -u); do
-    need "variable $v" docs/plugin-authoring.md "\`$v\`"
+  for v in $(grep -hE '^ *export ' "$ROOT/main.sh" "$ROOT/lib/router.sh" | grep -oE '(^|[^_A-Za-z])CB_[A-Z_]+' | grep -oE 'CB_[A-Z_]+' | sort -u); do
+    need "variable $v" "$file" "\`$v\`"
   done
 
   # ui:: helpers.
-  for h in $(grep -oE '^ui::[a-z_]+' lib/ui.sh | sort -u); do
-    need "helper $h" docs/plugin-authoring.md "\`$h"
+  for h in $(grep -oE '^ui::[a-z_]+' "$ROOT/lib/ui.sh" | sort -u); do
+    need "helper $h" "$file" "\`$h"
   done
+}
+
+doc_checks() {
+  local d cmd k f md dir link
+  cd "$ROOT" || return 1
+  contract_checks docs/plugin-authoring.md
+  # The part of it embedded in the guide of "self guide".
+  need "guide:begin marker" docs/plugin-authoring.md "<!-- guide:begin -->"
+  need "guide:end marker" docs/plugin-authoring.md "<!-- guide:end -->"
+  need "flags-example markers" docs/plugin-authoring.md "<!-- flags-example:begin -->"
+  need "flags-values markers" docs/plugin-authoring.md "<!-- flags-values:begin -->"
 
   # Built-in self commands.
   while IFS= read -r d; do
@@ -132,7 +148,8 @@ TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 mkdir -p "$TMP/app" "$TMP/home/bin"
 cp -R "$ROOT"/{main.sh,init.sh,lib,builtin,core,templates} "$TMP/app/"
-mkdir -p "$TMP/app/plugins"
+mkdir -p "$TMP/app/plugins" "$TMP/app/docs"
+cp "$ROOT/docs/plugin-authoring.md" "$TMP/app/docs/" # embedded by "self guide"
 ln -s "$TMP/app/main.sh" "$TMP/home/bin/tt"
 export HOME=$TMP/home XDG_CONFIG_HOME=$TMP/home/.config PATH=$TMP/home/bin:$PATH NO_COLOR=1
 # Prompts (ui::confirm, ui::ask) must never wait on the real terminal: they read _CB_TTY.
@@ -210,8 +227,85 @@ check "about shown in help"                "tt gen --help"              "My subc
 check "refused if it already exists"       "tt self new gen sub"        "already has an executable"
 check "self is reserved"                   "tt self new self"           "reserved"
 
+# Guide for AI assistants (self guide)
+G=$TMP/guide.md
+tt self guide >"$G" 2>&1
+check "guide: root name substituted"       "head -1 '$G'"               "creating a \`tt\` command"
+check "guide: install path substituted"    "cat '$G'"                   "| User commands | \`$TMP/app/plugins/\` |"
+check "guide: no placeholder left"         "grep -c '__CB_' '$G'"       "0"
+check "guide: lists commands"              "cat '$G'"                   "- \`tt demo greet\` (command, \`plugins/demo/greet/\`): Greets"
+check "guide: lists groups"                "cat '$G'"                   "- \`tt demo router\` (group, \`plugins/demo/router/\`): Router"
+check "guide: plugin ids and states"       "cat '$G'"                   "### Plugin \`demo\` (id \`user:demo\`, active)"
+check "guide: renamed plugin"             "cat '$G'"                   "- \`tt sys info\` (command, \`core/system/info/\`)"
+check "guide: help of self new"            "cat '$G'"                   "tt self new [options] <path...>"
+check "guide: ask when unclear"            "cat '$G'"                   "**ask questions first**"
+check "guide: system of the machine"       "cat '$G'"                   "| System | $(uname -sr)"
+check "guide: help texts in English"       "cat '$G'"                   "write everything that goes into the files in"
+check "guide: no sudo of the root command" "cat '$G'"                   "Never tell the user to run \`sudo tt ...\`"
+check "guide: official plugins not shadowed" "cat '$G'"                  "would **shadow** it, and all its commands"
+check "guide: examples use declared flags"  "cat '$G'"                  "must only use the flags and arguments"
+check "guide: edge case in Try it"        "cat '$G'"                  "edge case of the logic"
+check "guide: settings in CB_CONFIG_DIR"   "cat '$G'"                  "a file under \`\$CB_CONFIG_DIR\` (that is \`~/.config/tt\`)"
+check "guide: --no-commands"               "tt self guide --no-commands | grep -c 'plugins/demo/greet/'" "0"
+check "guide: --no-commands says so"       "tt self guide --no-commands" "Not shared by the user"
+check "guide: reference embedded"          "cat '$G'"                   "## \`flags.sh\` DSL"
+check "guide: reference markers stripped"  "grep -c 'guide:begin' '$G'" "0"
+# The guide describes the whole plugin contract, like docs/plugin-authoring.md.
+contract_checks "$G"
+# The worked example of the guide really works: its bash blocks are run as they are.
+sed -n '/<!-- example:begin -->/,/<!-- example:end -->/p' "$G" |
+  awk '/^```bash$/ { f = 1; next } /^```$/ { f = 0 } f' >"$TMP/example.sh"
+check "guide example: uses self new"       "cat '$TMP/example.sh'"     "tt self new test hello"
+bash "$TMP/example.sh" >"$TMP/example.out" 2>&1
+check "guide example: skeleton created"    "cat '$TMP/example.out'"    "Command 'tt test hello' created"
+check "guide example: generated usage"     "cat '$TMP/example.out'"    "tt test hello [options] [name]"
+check "guide example: generated help"      "cat '$TMP/example.out'"    "name  Who to greet (default: world) (optional)"
+check "guide example: default output"      "grep -cx 'Hello, world!' '$TMP/example.out'" "1"
+check "guide example: flags output"        "grep -cx 'HELLO, ALICE!' '$TMP/example.out'" "1"
+check "guide example: parent described"    "tt --help"                 "Test commands"
+check "guide example: doctor is happy"     "tt self doctor | grep -c 'plugins/test'" "0"
+rm -rf "$P/test" "$TMP/example.sh" "$TMP/example.out"
+# The complete flags.sh example of the reference (as embedded in the guide) is valid, and
+# cmd.sh receives exactly the values it documents.
+check "guide: required and optional fields" "cat '$G'"                  "### Required and optional fields"
+mkdir -p "$P/backup/db/restore"
+echo 'about "Backups"' >"$P/backup/flags.sh"
+echo 'about "Databases"' >"$P/backup/db/flags.sh"
+sed -n '/<!-- flags-example:begin -->/,/<!-- flags-example:end -->/p' "$G" |
+  awk '/^```/ { f = !f; next } f' >"$P/backup/db/restore/flags.sh"
+sed -n '/<!-- flags-values:begin -->/,/<!-- flags-values:end -->/p' "$G" |
+  awk '/^```/ { f = !f; next } f' >"$TMP/values.expected"
+cat >"$P/backup/db/restore/cmd.sh" <<'X'
+for v in VERBOSE YES FORMAT JOBS TOKEN HOST; do n=FLAG_$v; echo "$n=${!n}"; done
+for v in DB DUMP TABLES; do n=ARG_$v; echo "$n=${!n}"; done
+echo "\$@=$*"
+X
+check "flags example: extracted"           "grep -c '^flag ' '$P/backup/db/restore/flags.sh'" "6"
+check "flags example: valid for doctor"    "tt self doctor | grep -c 'backup'" "0"
+check "flags example: generated help"      "tt backup db restore --help" "--format <sql|csv>  Dump format (default: sql)"
+check "flags example: dynamic choices"     "tt __complete -- backup db restore --host ''" $'db1\tPrimary'
+check "flags example: documented values"   "tt backup db restore prod dump.sql users orders --token T -v | diff '$TMP/values.expected' - && echo same" "same"
+check "flags example: --token required"    "tt backup db restore prod" "--token is required"
+rm -rf "$P/backup" "$TMP/values.expected"
+# -o: written to a file; an existing file is overwritten only after confirmation
+check "guide -o: written"                  "tt self guide -o '$TMP/g.md'" "Guide written to $TMP/g.md"
+check "guide -o: same content as stdout"   "diff '$G' '$TMP/g.md' && echo same" "same"
+echo keep >"$TMP/g.md"
+check "guide -o: no terminal = not overwritten" "tt self guide -o '$TMP/g.md'; cat '$TMP/g.md'" "keep"
+check "guide -o: refusal exit code"        "status \"tt self guide -o '$TMP/g.md'\"" "1"
+echo y >"$TMP/yes"
+check "guide -o: overwritten after yes"    "_CB_TTY='$TMP/yes' tt self guide -o '$TMP/g.md' >/dev/null 2>&1; head -1 '$TMP/g.md'" "# Guide for AI assistants"
+rm -f "$TMP/g.md" "$TMP/yes"
+# Missing reference: clear error, nothing printed half-way
+mv "$TMP/app/docs/plugin-authoring.md" "$TMP/pa.md"
+check "guide: missing reference"           "tt self guide"              "cannot read the reference"
+grep -v 'guide:begin' "$TMP/pa.md" >"$TMP/app/docs/plugin-authoring.md"
+check "guide: reference without markers"   "tt self guide | grep -c '^# Guide'" "0"
+mv "$TMP/pa.md" "$TMP/app/docs/plugin-authoring.md"
+rm -f "$G"
+
 # Completion
-check "root completion"                    "tt __complete -- ''"        "demo"
+check "root completion"                   "tt __complete -- ''"        "demo"
 check "subcommand completion"              "tt __complete -- demo ''"   "greet"
 check "flag completion"                    "tt __complete -- demo greet --l" "--loud"
 check "flag choices completion"            "tt __complete -- demo greet --lang ''" "en"

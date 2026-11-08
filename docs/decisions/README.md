@@ -16,6 +16,7 @@ think it should change, write a new record that supersedes the old one (and mark
 | [0007](0007-idempotent-uninstall.md) | Uninstall in `init.sh`, as independent idempotent steps | Accepted |
 | [0008](0008-require-bash-4-2.md) | Minimum Bash version raised to 4.2 (amends 0004) | Accepted |
 | [0009](0009-overridable-prompt-input.md) | Prompts read `${_CB_TTY:-/dev/tty}`; tests set it to `/dev/null` | Accepted |
+| [0010](0010-ai-guide-built-from-the-docs.md) | `self guide` prints an AI guide built from a template + `plugin-authoring.md`, example run by tests | Accepted |
 
 ## Template
 
