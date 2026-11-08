@@ -58,8 +58,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # Official bash images are Alpine based (BusyBox): GNU tools are added first.
-    # Experimental until it has passed once: then remove continue-on-error.
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
         with:

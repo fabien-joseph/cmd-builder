@@ -23,15 +23,14 @@ Keep this file current: move items to **Done** when shipped, add follow-ups you 
   `templates/ai-guide.md` + `docs/plugin-authoring.md`; its worked example is run by the
   tests (decision 0010). Rules refined by three evaluation rounds with small models
   (method in `docs/testing.md`).
+- CI on GitHub Actions (decision 0011): Linux, macOS (Homebrew Bash), both also under a
+  pseudo-terminal, Bash 4.2 tests and the Bash 4.1 guard in Docker. Its first runs fixed two
+  real Bash 4.2 bugs (`declare -g` inside functions, `\~` in replacements).
 
 ## Next
 
 In this order (owner's choice, 2026-11-08):
 
-- [ ] **CI** (GitHub Actions, `.github/workflows/tests.yml`, decision 0011): Linux and macOS
-      (Homebrew Bash), both also under a pseudo-terminal; Bash 4.2 tests and the Bash 4.1
-      guard in the official `bash:*` Docker images. Written, **first run pending**: the
-      `bash-versions` job is `continue-on-error` until it has passed once.
 - [ ] **`self rename <new-name>`**: rename the root command (`mu` → `xx`) without breaking
       anything: link in `~/.local/bin`, `~/.config/<name>/` (config kept), completion
       files, rc blocks. Today `./init.sh xx` installs a second, independent command (new
