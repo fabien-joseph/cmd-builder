@@ -39,6 +39,23 @@ If the `>>>` marker of the rc block is there but its `<<<` end marker is not (ed
 hand), the rc file is left untouched with a warning and the uninstall exits with code 1:
 remove the block by hand. `./init.sh` without a name only prints the usage.
 
+### Rename the root command
+
+```bash
+mu self rename xx              # "mu" becomes "xx"
+mu self rename xx --keep-old   # "xx" is added, "mu" keeps working
+```
+
+Moves the `~/.local/bin/mu` link, `~/.config/mu/` (your config is kept, the completion
+scripts are regenerated for the new name) and the `mu` blocks of `~/.bashrc` / `~/.zshrc`
+(replaced in place). It shows the plan and asks one confirmation first. If it is
+interrupted, run the same command again and it finishes the job. It refuses, without
+changing anything, if `~/.local/bin/xx` is not one of its links or if `~/.config/xx/config`
+already exists with a different content (uninstall `xx` first, or merge the files by hand).
+Scripts and aliases that call `mu` must then use `xx`, unless `--keep-old`: both names then
+work and share one config (`~/.config/mu/config` becomes a link to `~/.config/xx/config`;
+`./init.sh --uninstall mu` later removes only the link).
+
 ## Layout
 
 ```
@@ -203,6 +220,7 @@ rename  core:docker core-docker     # exposes it under another name
 | `mu self plugins` | lists plugins and their state |
 | `mu self plugins enable <plugin>` | re-enables a plugin (name or id, Tab offers the disabled plugins) |
 | `mu self plugins disable <plugin>` | disables a plugin (name or id, Tab offers the active plugins) |
+| `mu self rename <name> [--keep-old]` | renames the root command, keeping the config (see [Rename the root command](#rename-the-root-command)) |
 | `mu self doctor` | checks the installation, the config, conflicts and every `flags.sh` |
 | `mu self completion bash\|zsh` | prints the completion script |
 | `mu self guide [-o file]` | prints a guide for an AI assistant (ChatGPT, Claude…) that has no access to your machine, so it can tell you step by step how to create a command (`--no-commands`: do not list your commands) |

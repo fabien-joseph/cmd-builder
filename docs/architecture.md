@@ -63,6 +63,7 @@ Plugin states: `active`, `disabled`, `reserved`, `shadowed:<id>`.
 | `lib/parse.sh` | Argument parser (`cb::parse`) and env export (`cb::export_values`) |
 | `lib/router.sh` | `cb::main` (entry), `cb::run` (spec → parse → exec), unknown-command errors |
 | `lib/complete.sh` | Shell-agnostic completion engine (`cb::complete`) and completion script generation |
+| `lib/install.sh` | Install helpers shared by `init.sh` and `self rename`: rc block markers, `cb::rc_block` / `cb::rc_append` / `cb::rc_replace` (atomic rewrite), `cb::link_is_ours` / `cb::link_remove`, config-dir cleanup, `cb::tilde`, `_CB_BIN_DIR`. Not loaded by `lib/core.sh` |
 | `lib/run.sh` | Tiny launcher: loads `ui.sh`, then sources the target `cmd.sh` with the remaining args |
 
 ## Global state
@@ -90,7 +91,7 @@ functions (`name=()`): Bash 4.2 ignores `declare -g` for an assignment inside a 
 | Code | Meaning | Where |
 |---|---|---|
 | 0 | success, or help displayed | everywhere |
-| 1 | generic failure (`ui::die` default) | commands, `self doctor` with errors, `init.sh --uninstall` that left an rc block in place |
+| 1 | generic failure (`ui::die` default) | commands, `self doctor` with errors, `init.sh --uninstall` that left an rc block in place, `self rename` refused, cancelled or incomplete |
 | 2 | usage error: unknown command/option, invalid or missing value | `lib/parse.sh`, `lib/router.sh`, `init.sh` without a name |
 | 3 | invalid `flags.sh` (DSL error, reported as `file:line : message`) | `cb::_spec_err` |
 
@@ -143,6 +144,7 @@ best examples of the framework in use. They source `lib/core.sh` to access inter
 | `self new` | scaffold a command path (`flags.sh` + `cmd.sh`), `--core`, `--git`, `--about` |
 | `self plugins` | list plugins with id and state |
 | `self plugins enable` / `self plugins disable` | toggle a plugin in the config (name or id, dynamic completion) |
+| `self rename` | rename the root command: plan + one confirmation, then new link, config moved, completion regenerated, rc blocks replaced in place, old config dir and old link last; resumable; `--keep-old` keeps the old name with its config as a symlink (decision 0012) |
 | `self doctor` | check environment, link, completion files, config, conflicts, every `flags.sh` |
 | `self completion` | print the bash or zsh completion script |
 | `self guide` | print `templates/ai-guide.md` filled in: root name, paths, system, Bash version, existing commands (unless `--no-commands`), help of `self new`, and the part of `docs/plugin-authoring.md` between `<!-- guide:begin -->` and `<!-- guide:end -->` (decision 0010); `-o` writes a file, confirm before overwriting |
@@ -154,8 +156,10 @@ best examples of the framework in use. They source `lib/core.sh` to access inter
 | Path | Created by | Removed by `--uninstall` |
 |---|---|---|
 | `~/.local/bin/<name>` → `main.sh` | install | yes, only if it points to this checkout |
-| `~/.config/<name>/config` | install (`cb::config_ensure`) | after confirmation |
+| `~/.config/<name>/config` | install (`cb::config_ensure`), moved by `self rename` | after confirmation; without asking if it is a symlink (only the link goes) |
 | `~/.config/<name>/completion.{bash,zsh}` | install, `self update` | yes |
 | block `# >>> cmd-builder: <name> >>>` … `<<<` in `~/.bashrc`, `~/.zshrc` | install, after confirmation | yes (atomic rewrite, follows symlinked rc files; refused with a warning if the end marker is missing) |
 
 Several installs under different names can coexist: everything is keyed by `CB_NAME`.
+`self rename` moves all of it from one name to another (decision 0012); the code that
+knows this layout lives in `lib/install.sh`, shared by `init.sh` and `self rename`.
