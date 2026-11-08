@@ -31,17 +31,17 @@ Keep this file current: move items to **Done** when shipped, add follow-ups you 
   `init.sh` in `lib/install.sh`.
 - `self doctor` checks every `example` like the parser would (warnings). CI on
   `actions/checkout` (Node.js 20 deprecation).
+- `self guide [request]`: the request is appended at the end of the guide, to paste
+  everything as a single message.
 
 ## Next
 
 In this order (owner's choice, 2026-11-08; then agree on the order of the rest):
 
-1. [ ] `self guide [request]`: optional request appended at the end of the guide, ready to
-      paste as a single message.
-2. [ ] A user plugin can *extend* an official one instead of shadowing it
+1. [ ] A user plugin can *extend* an official one instead of shadowing it
       (`plugins/system/disk/` adds `mu system disk` next to `mu system info`). Today the AI
       guide has to steer users to another plugin name, or to `self new --core`.
-3. [ ] Talk with the owner about **dependencies** (topic to be defined by the owner).
+2. [ ] Talk with the owner about **dependencies** (topic to be defined by the owner).
 
 Accepted, not scheduled yet:
 

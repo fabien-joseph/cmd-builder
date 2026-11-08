@@ -86,17 +86,22 @@ guide() {
         ;;
     esac
   done <"$tpl"
+  (($# == 0)) && return 0
+  printf "\n## The user's request\n\nAnswer this request, following this guide:\n\n"
+  while IFS= read -r line || [[ -n $line ]]; do
+    printf '> %s\n' "$line"
+  done <<<"$*"
 }
 
 if [[ -z $FLAG_OUTPUT ]]; then
-  guide
+  guide "$@"
   exit 0
 fi
 
 if [[ -e $FLAG_OUTPUT ]]; then
   ui::confirm "$FLAG_OUTPUT already exists. Overwrite it?" || ui::die "cancelled: $FLAG_OUTPUT left untouched"
 fi
-content=$(guide) || exit 1
+content=$(guide "$@") || exit 1
 printf '%s\n' "$content" >"$FLAG_OUTPUT" || ui::die "cannot write $FLAG_OUTPUT"
 ui::success "Guide written to $FLAG_OUTPUT"
 ui::info "Attach it to a conversation with an AI assistant, then describe the command you want."

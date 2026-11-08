@@ -250,6 +250,12 @@ check "guide: edge case in Try it"        "cat '$G'"                  "edge case
 check "guide: settings in CB_CONFIG_DIR"   "cat '$G'"                  "a file under \`\$CB_CONFIG_DIR\` (that is \`~/.config/tt\`)"
 check "guide: --no-commands"               "tt self guide --no-commands | grep -c 'plugins/demo/greet/'" "0"
 check "guide: --no-commands says so"       "tt self guide --no-commands" "Not shared by the user"
+check "guide: no request, no request section"  "grep -c \"^## The user's request\" '$G'" "0"
+check "guide: request appended at the end"     "tt self guide --no-commands \"I want 'tt x'\" 'that prints x' | tail -n 3" $'Answer this request, following this guide:\n\n> I want \'tt x\' that prints x'
+check "guide: multi-line request quoted"       "tt self guide $'line one\nline two' | tail -n 2" $'> line one\n> line two'
+check "guide: request written with -o"         "tt self guide -o '$TMP/g2.md' hello >/dev/null 2>&1; tail -n 1 '$TMP/g2.md'" "> hello"
+check "guide: request section is announced"    "cat '$G'" "If it ends with a section \"The user's request\""
+rm -f "$TMP/g2.md"
 check "guide: reference embedded"          "cat '$G'"                   "## \`flags.sh\` DSL"
 check "guide: reference markers stripped"  "grep -c 'guide:begin' '$G'" "0"
 # The guide describes the whole plugin contract, like docs/plugin-authoring.md.

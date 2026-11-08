@@ -148,7 +148,7 @@ best examples of the framework in use. They source `lib/core.sh` to access inter
 | `self rename` | rename the root command: plan + one confirmation, then new link, config moved, completion regenerated, rc blocks replaced in place, old config dir and old link last; resumable; `--keep-old` keeps the old name with its config as a symlink (decision 0012) |
 | `self doctor` | check environment, link, completion files, config, conflicts, every `flags.sh`, and every `example` (routed from the root like `cb::main`, the plugin also accepted under its directory name, then `cb::parse` in a subshell with `_CB_NO_DYNAMIC=1`; warnings) |
 | `self completion` | print the bash or zsh completion script |
-| `self guide` | print `templates/ai-guide.md` filled in: root name, paths, system, Bash version, existing commands (unless `--no-commands`), help of `self new`, and the part of `docs/plugin-authoring.md` between `<!-- guide:begin -->` and `<!-- guide:end -->` (decision 0010); `-o` writes a file, confirm before overwriting |
+| `self guide` | print `templates/ai-guide.md` filled in: root name, paths, system, Bash version, existing commands (unless `--no-commands`), help of `self new`, and the part of `docs/plugin-authoring.md` between `<!-- guide:begin -->` and `<!-- guide:end -->` (decision 0010); an optional request (variadic arg) is appended as a final "The user's request" section, quoted with `> `; `-o` writes a file, confirm before overwriting |
 
 `builtin/self/plugins/_resolve.sh` is a shared helper (ignored by routing thanks to `_`).
 

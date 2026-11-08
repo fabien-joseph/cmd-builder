@@ -223,7 +223,7 @@ rename  core:docker core-docker     # exposes it under another name
 | `mu self rename <name> [--keep-old]` | renames the root command, keeping the config (see [Rename the root command](#rename-the-root-command)) |
 | `mu self doctor` | checks the installation, the config, conflicts, every `flags.sh` and every `example` |
 | `mu self completion bash\|zsh` | prints the completion script |
-| `mu self guide [-o file]` | prints a guide for an AI assistant (ChatGPT, Claude…) that has no access to your machine, so it can tell you step by step how to create a command (`--no-commands`: do not list your commands) |
+| `mu self guide [request] [-o file]` | prints a guide for an AI assistant (ChatGPT, Claude…) that has no access to your machine, so it can tell you step by step how to create a command (`--no-commands`: do not list your commands). A request given on the command line is appended at the end, to paste everything as one message: `mu self guide "I want 'mu test hello', which prints hello"` |
 
 ## Contributing
 
