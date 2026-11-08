@@ -20,6 +20,8 @@
 - Bash 4.2: never `declare -g` inside a function (`declare -gA name=()` there does not
   create the global). Declare globals at the top level of the `lib/` file and reset them in
   functions with `name=()`. A test enforces it; the CI runs the suite on a real Bash 4.2.
+- Bash 4.2: no `\~` in a `${var/pattern/replacement}` inside double quotes, the backslash
+  is kept (`source \~/.bashrc`). Use `tilde` in `init.sh` to display paths; a test enforces it.
 - The framework does **not** use `set -e` / `set -u`: errors are handled explicitly.
   Plugins may enable them in their own `cmd.sh`.
 - Quote every expansion unless word splitting is intended (and then say so, e.g.
