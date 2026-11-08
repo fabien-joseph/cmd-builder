@@ -185,12 +185,22 @@ rc_block() {
   ui::success "added to ${rc/#$HOME/\~}"
 }
 
-configured=0
+configured=0 bash_ok=0 zsh_ok=0
 if [[ -f $HOME/.bashrc || $SHELL == */bash ]]; then
-  rc_block bash "$HOME/.bashrc" && configured=1
+  rc_block bash "$HOME/.bashrc" && configured=1 bash_ok=1
 fi
 if [[ -f $zshrc || $SHELL == */zsh ]]; then
-  rc_block zsh "$zshrc" && configured=1
+  rc_block zsh "$zshrc" && configured=1 zsh_ok=1
+fi
+
+# rc file to reload in the current terminal: the one of the user's shell, if configured.
+reload_rc=
+case $SHELL in
+  */bash) ((bash_ok)) && reload_rc=$HOME/.bashrc ;;
+  */zsh) ((zsh_ok)) && reload_rc=$zshrc ;;
+esac
+if [[ -z $reload_rc ]] && ((bash_ok + zsh_ok == 1)); then
+  ((bash_ok)) && reload_rc=$HOME/.bashrc || reload_rc=$zshrc
 fi
 
 case ":$PATH:" in
@@ -205,4 +215,11 @@ case ":$PATH:" in
 esac
 
 echo
-ui::success "All set! Open a new terminal, then run: $CB_NAME --help"
+if [[ -n $reload_rc ]]; then
+  # This terminal read its rc file before the install: completion is not loaded here yet.
+  ui::success "All set! Open a new terminal, or run this in the current one:"
+  printf '  source %s\n' "${reload_rc/#$HOME/\~}"
+  ui::info "Then try: $CB_NAME --help"
+else
+  ui::success "All set! Open a new terminal, then run: $CB_NAME --help"
+fi

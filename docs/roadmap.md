@@ -17,6 +17,7 @@ Keep this file current: move items to **Done** when shipped, add follow-ups you 
   `--flag=<TAB>` completion, negative numbers in completion, `self doctor` no longer
   flags `flags.sh` by their last command status, `self new` writes nothing when refused,
   symlinked config kept, Bash 4.2 minimum (decision 0008).
+- `init.sh` prints the `source <rc file>` line to load completion in the current terminal.
 
 ## Next
 

@@ -135,6 +135,8 @@ cp -R "$ROOT"/{main.sh,init.sh,lib,builtin,core,templates} "$TMP/app/"
 mkdir -p "$TMP/app/plugins"
 ln -s "$TMP/app/main.sh" "$TMP/home/bin/tt"
 export HOME=$TMP/home XDG_CONFIG_HOME=$TMP/home/.config PATH=$TMP/home/bin:$PATH NO_COLOR=1
+# Prompts (ui::confirm, ui::ask) must never wait on the real terminal: they read _CB_TTY.
+export _CB_TTY=/dev/null
 
 P=$TMP/app/plugins
 mkdir -p "$P/demo/greet" "$P/demo/router/leaf"
@@ -332,6 +334,26 @@ check "uninstall: incomplete = exit 1"         "status \"bash '$TMP/app/init.sh'
 printf '%s\n' 'alias a=1' '' '# >>> cmd-builder: zz >>>' 'export X=1' '# <<< cmd-builder: zz <<<' 'alias b=2' >"$HOME/.bashrc"
 check "uninstall: complete block removed"      "bash '$TMP/app/init.sh' --uninstall zz >/dev/null 2>&1; cat '$HOME/.bashrc'" $'alias a=1\nalias b=2'
 rm -f "$HOME/.bashrc"
+
+# init.sh install: how to load completion in the current terminal
+zzblock=$'# >>> cmd-builder: zz >>>\n# <<< cmd-builder: zz <<<'
+printf '%s\n' "$zzblock" >"$HOME/.bashrc"
+check "install: source hint for bash"          "SHELL=/bin/bash bash '$TMP/app/init.sh' zz" "source ~/.bashrc"
+printf '%s\n' "$zzblock" >"$HOME/.zshrc"
+check "install: source hint for the user's shell" "SHELL=/bin/zsh bash '$TMP/app/init.sh' zz" "source ~/.zshrc"
+rm -f "$HOME/.bashrc" "$HOME/.zshrc"
+check "install: no hint when no rc configured"  "SHELL=/bin/bash bash '$TMP/app/init.sh' zz | grep -c 'source '" "0"
+bash "$TMP/app/init.sh" --uninstall zz >/dev/null 2>&1
+rm -f "$HOME/.bashrc" "$HOME/.zshrc"
+
+# Prompts: answers come from _CB_TTY, so the "yes" path is testable too
+echo y >"$TMP/yes"
+check "prompt: yes read from _CB_TTY"          "_CB_TTY='$TMP/yes' SHELL=/bin/bash bash '$TMP/app/init.sh' zz" "added to ~/.bashrc"
+check "prompt: yes path wrote the rc block"    "cat '$HOME/.bashrc'"      "# >>> cmd-builder: zz >>>"
+check "prompt: no terminal = no"               "bash '$TMP/app/init.sh' --uninstall zz" "configuration kept"
+_CB_TTY=$TMP/yes bash "$TMP/app/init.sh" --uninstall zz >/dev/null 2>&1
+check "prompt: yes removes the configuration"  "test -e '$XDG_CONFIG_HOME/zz'; echo \$?" "1"
+rm -f "$HOME/.bashrc" "$HOME/.zshrc" "$TMP/yes"
 
 # Repository language: no French left in code comments
 check "code comments are in English" \

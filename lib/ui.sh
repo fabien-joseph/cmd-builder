@@ -26,11 +26,12 @@ ui::die()     { ui::error "$1"; exit "${2:-1}"; }
 ui::title()   { printf '%s%s%s\n' "$UI_BOLD" "$*" "$UI_RESET"; }
 
 # Asks for confirmation on the terminal. Without a terminal: always "no".
+# Prompts read /dev/tty; _CB_TTY (internal, set by tests/run.sh) overrides it.
 ui::confirm() {
   local q=$1 def=${2:-n} hint ans
   [[ $def == y ]] && hint='[Y/n]' || hint='[y/N]'
   printf '%s?%s %s %s ' "$_UI_BLUE" "$_UI_RESET" "$q" "$hint" >&2
-  if ! { read -r ans </dev/tty; } 2>/dev/null; then
+  if ! { read -r ans <"${_CB_TTY:-/dev/tty}"; } 2>/dev/null; then
     printf '\n' >&2
     return 1
   fi
@@ -47,6 +48,6 @@ ui::ask() {
   else
     printf '%s?%s %s ' "$_UI_BLUE" "$_UI_RESET" "$q" >&2
   fi
-  { read -r ans </dev/tty; } 2>/dev/null || printf '\n' >&2
+  { read -r ans <"${_CB_TTY:-/dev/tty}"; } 2>/dev/null || printf '\n' >&2
   printf '%s\n' "${ans:-$def}"
 }
