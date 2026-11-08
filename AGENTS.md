@@ -28,6 +28,7 @@ core/                official plugins, versioned in this repo (id core:<plugin>)
 plugins/             user plugins, git-ignored, often their own git repos (id user:<plugin>)
 templates/           completion script templates and the AI guide of "self guide" (placeholders __CB_*__)
 tests/run.sh         all tests: end-to-end + doc consistency checks (--docs: docs only)
+.github/workflows/   CI (GitHub Actions): Linux, macOS, Bash 4.2 / 4.1 (decision 0011)
 docs/                contributor documentation (English); plugin-authoring.md also ships in "self guide"
 README.md            user documentation
 ```
@@ -56,6 +57,7 @@ README.md            user documentation
 ./tests/run.sh                    # all tests: end-to-end + doc consistency (must stay green)
 bash -n lib/*.sh main.sh init.sh  # syntax check
 script -qec ./tests/run.sh /dev/null  # Linux: same under a pseudo-terminal, must not hang on a prompt
+gh run list / gh run view --log-failed   # CI results (GitHub Actions, decision 0011)
 ```
 
 Try changes without touching your real setup — use an isolated `HOME`:
@@ -72,6 +74,7 @@ Anything you create under `plugins/` while testing must be removed afterwards
 
 - [ ] `./tests/run.sh` passes (it also checks that docs mention every DSL option,
       `CB_*` variable, `ui::` helper, `self` command, config directive and `lib/` file).
+- [ ] CI is green on the pull request (Linux, macOS, Bash 4.2), see `docs/testing.md`.
 - [ ] New behaviour has tests.
 - [ ] Docs updated: `docs/` **and** `README.md` if users see the change.
 - [ ] Plugin contract or `self new` changed → the guide still reads well:

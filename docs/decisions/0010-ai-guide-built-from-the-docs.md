@@ -60,6 +60,8 @@ Kept up to date by tests:
 - the markers must stay in `docs/plugin-authoring.md`.
 
 ## Alternatives considered
+- *The guide in French or other languages* (roadmap idea): rejected by the owner, the
+  guide stays in English and the AI talks in the user's language.
 - *A hand-written, standalone guide*: duplicates `plugin-authoring.md`, drifts silently.
 - *Ship `AGENTS.md` / the whole `docs/`*: written for contributors of the framework, not for
   helping a user write a plugin; too long and off-topic.

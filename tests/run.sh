@@ -144,7 +144,9 @@ fi
 # ---------------------------------------------------------------------------
 # End-to-end tests
 # ---------------------------------------------------------------------------
-TMP=$(mktemp -d)
+# Physical path: on macOS mktemp gives /var/..., a symlink to /private/var/..., while
+# the framework resolves its own paths with cd -P.
+TMP=$(cd -P "$(mktemp -d)" && pwd)
 trap 'rm -rf "$TMP"' EXIT
 mkdir -p "$TMP/app" "$TMP/home/bin"
 cp -R "$ROOT"/{main.sh,init.sh,lib,builtin,core,templates} "$TMP/app/"

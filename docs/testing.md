@@ -85,13 +85,21 @@ The `# Guide for AI assistants` block of the end-to-end suite generates the guid
   markers) from the guide, installs it as `tt backup db restore`, and checks that `cmd.sh`
   receives exactly the values listed between the `flags-values` markers.
 
+## Continuous integration
+
+`.github/workflows/tests.yml` (decision 0011) runs on every push to `main` and every pull
+request: Linux, macOS with Homebrew Bash (both also under a pseudo-terminal), and Bash 4.2
+plus the Bash 4.1 guard in the official `bash:*` Docker images. Keep tests portable to BSD
+tools (macOS) and to BusyBox images with GNU tools added; the sandbox uses the physical
+path of `mktemp -d` because macOS returns `/var/...`, a symlink to `/private/var/...`.
+With `gh` installed: `gh run list`, `gh run watch`, `gh run view --log-failed`.
+
 ## Not covered yet
 
 - zsh completion (`templates/completion.zsh`) is not exercised automatically (zsh was not
   available when it was written). Test it manually in zsh before changing it.
 - `self update` against real remotes: tested manually with local bare repositories
   (see the recipe in `docs/roadmap.md`).
-- macOS: never run in CI.
 
 ## Evaluating the guide with real AI models (manual)
 
@@ -100,9 +108,12 @@ that an AI *follows* it. After a significant change to `templates/ai-guide.md`, 
 by hand with small models (the weakest available, e.g. Haiku):
 
 1. Generate the guide in an isolated `HOME` (see `AGENTS.md`): `mu self guide -o <file>`.
-2. Give it to several sub-agents that play a chat assistant without access to the machine
-   (allowed to read the guide and to write their answer to a file, nothing else), each with
-   a different request. If they would ask questions, they write them, then a line
+2. Give it to several sub-agents that play a chat assistant without access to the machine,
+   each with a different request. Use an agent that **only has file read and write tools,
+   no shell** (with Claude Code: a user-level agent such as
+   `~/.claude/agents/chat-ai-simulator.md` with `tools: Read, Write`), so that it cannot
+   look at the machine even by mistake. Services the commands need (databases...) exist
+   only on the evaluator's side. If they would ask questions, they write them, then a line
    `--- USER: ok ---`, then the full answer as if the user accepted their suggestions.
 3. Run the `bash` blocks of each answer (after the `ok` line) in a fresh copy of the project
    with an isolated `HOME`, `_CB_TTY=/dev/null` and a timeout, with the install path
