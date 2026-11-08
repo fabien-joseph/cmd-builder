@@ -19,6 +19,9 @@ Keep this file current: move items to **Done** when shipped, add follow-ups you 
   symlinked config kept, Bash 4.2 minimum (decision 0008).
 - `init.sh` prints the `source <rc file>` line to load completion in the current terminal.
 - Tests never wait on the real terminal (`_CB_TTY`, decision 0009); "yes" paths tested.
+- `self guide`: Markdown guide for AI chats without access to the machine, built from
+  `templates/ai-guide.md` + `docs/plugin-authoring.md`; its worked example is run by the
+  tests (decision 0010).
 
 ## Next
 
@@ -30,6 +33,16 @@ Keep this file current: move items to **Done** when shipped, add follow-ups you 
 
 ## Ideas (not decided)
 
+- `self doctor` checks every `example` of a `flags.sh` against its own declarations (unknown
+  option, missing required argument), like the parser would. An AI-written plugin had a
+  `--help` example with undeclared flags.
+- Let a user plugin *extend* an official one instead of shadowing it (e.g. `plugins/system/disk/`
+  adds `mu system disk` next to `mu system info`). Today the AI guide has to steer users to
+  another plugin name, or to `self new --core` (files in the cmd-builder repository).
+- `self guide <request>`: put the user's request at the end of the guide, ready to paste
+  as a single message.
+- `self guide` in French (or other languages) for the AI-facing text; today the AI is told
+  to answer in the user's language.
 - Repeatable flags (`--tag a --tag b`) / list type.
 - Inherited flags (a flag declared on a parent available to all subcommands).
 - Command aliases (`about`-level `alias ls` for `list`).
@@ -50,7 +63,7 @@ Keep this file current: move items to **Done** when shipped, add follow-ups you 
 
 ```bash
 S=$(mktemp -d); cd "$S"
-mkdir src && cp -R <checkout>/{main.sh,init.sh,lib,builtin,core,templates} src/ && mkdir src/plugins
+mkdir src && cp -R <checkout>/{main.sh,init.sh,lib,builtin,core,templates,docs} src/ && mkdir src/plugins
 git -C src init -q -b main && git -C src add -A && git -C src commit -qm init
 git clone -q --bare src core.git && git clone -q core.git install
 git clone -q core.git w && echo '# x' >> w/core/system/flags.sh && git -C w commit -qam change && git -C w push -q

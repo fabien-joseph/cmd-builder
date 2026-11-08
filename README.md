@@ -77,6 +77,15 @@ mu self new backup db restore -a "Restore a database"
 mu self new my-plugin --git      # new plugin with its own git repository
 ```
 
+With an AI chat (ChatGPT, Claude, Gemini…) that cannot see your machine, generate a guide and
+attach it to the conversation with your request (for example *"I want a command `mu test
+hello` that prints hello"*): it answers with the commands to paste, step by step.
+
+```bash
+mu self guide -o ~/mu-guide.md   # your setup, your commands and the full reference
+mu self guide --no-commands      # without the list of your commands
+```
+
 ### `flags.sh`
 
 ```bash
@@ -95,6 +104,11 @@ arg files   "Files to import"          --optional --variadic
 
 example "backup db restore prod dump.sql" "Restore prod"
 ```
+
+Everything is optional (even `flags.sh` itself), except the fields of the lines you write:
+`flag` needs a name, a type and a description, `arg` a name and a description, and their
+options come after the description. An `arg` is required unless `--optional`.
+See [docs/plugin-authoring.md](docs/plugin-authoring.md) for the complete reference.
 
 | `flag` option | Effect |
 |---|---|
@@ -191,6 +205,7 @@ rename  core:docker core-docker     # exposes it under another name
 | `mu self plugins disable <plugin>` | disables a plugin (name or id, Tab offers the active plugins) |
 | `mu self doctor` | checks the installation, the config, conflicts and every `flags.sh` |
 | `mu self completion bash\|zsh` | prints the completion script |
+| `mu self guide [-o file]` | prints a guide for an AI assistant (ChatGPT, Claude…) that has no access to your machine, so it can tell you step by step how to create a command (`--no-commands`: do not list your commands) |
 
 ## Contributing
 
