@@ -17,6 +17,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the docs checks look up the commit named in docs/handoff.md
       - name: Bash version
         run: bash --version | head -1
       - name: Syntax check
@@ -33,6 +35,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the docs checks look up the commit named in docs/handoff.md
       - name: Install Bash >= 4.2
         run: |
           brew install bash
@@ -58,6 +62,8 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the docs checks look up the commit named in docs/handoff.md
       - name: Tests with Bash 4.2
         run: |
           docker run --rm -v "$PWD:/w" -w /w bash:4.2 sh -c '

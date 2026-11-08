@@ -6,6 +6,9 @@
 #
 # Result: _CB_VAL[flag], _CB_AVAL[arg], _CB_POS (positional arguments).
 
+# Declared outside any function, reset in cb::parse (see lib/spec.sh: Bash 4.2).
+declare -gA _CB_VAL=() _CB_AVAL=()
+
 cb::_parse_err() {
   ui::error "$1"
   [[ -n ${2:-} ]] && printf '  %s\n' "$2" >&2
@@ -41,7 +44,7 @@ cb::_check_choice() {
 cb::parse() {
   _CB_DIR=$1 _CB_DISPLAY=$2
   shift 2
-  declare -gA _CB_VAL=() _CB_AVAL=()
+  _CB_VAL=() _CB_AVAL=()
   _CB_POS=()
   local a name val c rest has endopts=0
 

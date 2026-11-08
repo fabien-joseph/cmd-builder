@@ -17,6 +17,9 @@
   fall back to BSD (see `chmod --reference` / `stat -f` in `init.sh`).
 - Shebang `#!/usr/bin/env bash` (picks Homebrew Bash on macOS). Entry scripts check the
   Bash version before using any Bash 4 syntax, with a `case` that `sh` can parse.
+- Bash 4.2: never `declare -g` inside a function (`declare -gA name=()` there does not
+  create the global). Declare globals at the top level of the `lib/` file and reset them in
+  functions with `name=()`. A test enforces it; the CI runs the suite on a real Bash 4.2.
 - The framework does **not** use `set -e` / `set -u`: errors are handled explicitly.
   Plugins may enable them in their own `cmd.sh`.
 - Quote every expansion unless word splitting is intended (and then say so, e.g.

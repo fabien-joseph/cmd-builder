@@ -13,12 +13,19 @@
 #
 # Values reach cmd.sh as FLAG_<NAME> and ARG_<NAME> (upper case, "-" → "_").
 
+# Associative arrays are declared here, outside any function: Bash 4.2 does not create the
+# global for "declare -gA name=()" run inside a function (decision 0011). Functions only
+# reset them with "name=()", which keeps the associative type.
+declare -gA _CB_F_SHORT=() _CB_F_TYPE=() _CB_F_DESC=() _CB_F_DEFAULT=() _CB_F_REQ=() _CB_F_CHOICES=() _CB_F_BYSHORT=()
+declare -gA _CB_F_CHFROM=() _CB_F_STRICT=()
+declare -gA _CB_A_DESC=() _CB_A_OPT=() _CB_A_VAR=() _CB_A_CHOICES=() _CB_A_CHFROM=() _CB_A_STRICT=()
+
 cb::spec_reset() {
   _CB_ABOUT= _CB_DESC= _CB_SPEC_FILE=
   _CB_EXAMPLES=() _CB_FLAGS=() _CB_ARGS=()
-  declare -gA _CB_F_SHORT=() _CB_F_TYPE=() _CB_F_DESC=() _CB_F_DEFAULT=() _CB_F_REQ=() _CB_F_CHOICES=() _CB_F_BYSHORT=()
-  declare -gA _CB_F_CHFROM=() _CB_F_STRICT=()
-  declare -gA _CB_A_DESC=() _CB_A_OPT=() _CB_A_VAR=() _CB_A_CHOICES=() _CB_A_CHFROM=() _CB_A_STRICT=()
+  _CB_F_SHORT=() _CB_F_TYPE=() _CB_F_DESC=() _CB_F_DEFAULT=() _CB_F_REQ=() _CB_F_CHOICES=() _CB_F_BYSHORT=()
+  _CB_F_CHFROM=() _CB_F_STRICT=()
+  _CB_A_DESC=() _CB_A_OPT=() _CB_A_VAR=() _CB_A_CHOICES=() _CB_A_CHFROM=() _CB_A_STRICT=()
 }
 
 # Possible values of a flag (F) or an argument (A), one "value<TAB>description" per line.
