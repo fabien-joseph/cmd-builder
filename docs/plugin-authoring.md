@@ -212,7 +212,7 @@ requires jq --optional                     # the command works without it
 
 - Before running the command, the framework checks with `command -v` that every required
   tool is installed. If one is missing, the command does not run:
-  `✖ 'mu x' needs 'fzf', not installed` / `Install: mu self deps install` (exit code 1).
+  `✗ 'mu x' needs 'fzf', not installed` / `Install: mu self deps install` (exit code 1).
   `--help` and Tab completion still work.
 - `--optional`: not checked. The command handles its absence itself, e.g.
   `if command -v jq >/dev/null; then … else … fi`. It is listed as optional by
@@ -252,9 +252,9 @@ unless `-5` is a declared short flag. `-` alone is a positional.
 | Helper | Effect |
 |---|---|
 | `ui::info "msg"` | `› msg` on stderr |
-| `ui::success "msg"` | `✔ msg` on stderr |
-| `ui::warn "msg"` | `⚠ msg` on stderr |
-| `ui::error "msg"` | `✖ msg` on stderr |
+| `ui::success "msg"` | `✓ msg` on stderr |
+| `ui::warn "msg"` | `! msg` on stderr |
+| `ui::error "msg"` | `✗ msg` on stderr |
 | `ui::die "msg" [code]` | error then `exit code` (default 1) |
 | `ui::title "text"` | bold line on stdout |
 | `ui::confirm "Question ?" [y\|n]` | returns 0 for yes; reads `/dev/tty`; without a terminal always returns 1 |

@@ -20,9 +20,9 @@ else
 fi
 
 ui::info()    { printf '%s›%s %s\n' "$_UI_BLUE" "$_UI_RESET" "$*" >&2; }
-ui::success() { printf '%s✔%s %s\n' "$_UI_GREEN" "$_UI_RESET" "$*" >&2; }
-ui::warn()    { printf '%s⚠%s %s\n' "$_UI_YELLOW" "$_UI_RESET" "$*" >&2; }
-ui::error()   { printf '%s✖%s %s\n' "$_UI_RED" "$_UI_RESET" "$*" >&2; }
+ui::success() { printf '%s✓%s %s\n' "$_UI_GREEN" "$_UI_RESET" "$*" >&2; }
+ui::warn()    { printf '%s!%s %s\n' "$_UI_YELLOW" "$_UI_RESET" "$*" >&2; }
+ui::error()   { printf '%s✗%s %s\n' "$_UI_RED" "$_UI_RESET" "$*" >&2; }
 ui::die()     { ui::error "$1"; exit "${2:-1}"; }
 ui::title()   { printf '%s%s%s\n' "$UI_BOLD" "$*" "$UI_RESET"; }
 

@@ -53,6 +53,9 @@ something plugin-specific (`_cb_enabled_plugins`, `_dyn_envs`) to avoid collisio
 - Messages (`ui::info/success/warn/error`) go to **stderr**; data and help go to **stdout**.
 - Usage errors: `ui::error` + optional hint line + `See '<command> --help'.`, exit 2.
 - Never print colours when the stream is not a terminal; honour `NO_COLOR`.
+- Status symbols are single-width characters without an emoji variant (`› ✓ ! ✗`): some
+  terminals (Windows Terminal) draw `✔ ✖ ⚠` two columns wide, over the next character.
+  A test enforces it.
 - Error messages say what is wrong **and** how to fix it when possible
   (`→ add 'rename core:x <name>' to the config`).
 
