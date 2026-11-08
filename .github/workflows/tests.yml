@@ -1,0 +1,79 @@
+# Runs tests/run.sh on every push to main and every pull request.
+# See docs/testing.md (section "Continuous integration") and docs/decisions/0011-ci.md.
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Linux (system Bash)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the docs checks look up the commit named in docs/handoff.md
+      - name: Bash version
+        run: bash --version | head -1
+      - name: Syntax check
+        run: bash -n lib/*.sh main.sh init.sh tests/run.sh
+      - name: Tests
+        run: ./tests/run.sh
+      # A test that reaches a prompt hangs only when a terminal exists (decision 0009).
+      - name: Tests under a pseudo-terminal
+        run: timeout 300 script -qec ./tests/run.sh /dev/null
+
+  macos:
+    name: macOS (Homebrew Bash)
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the docs checks look up the commit named in docs/handoff.md
+      - name: Install Bash >= 4.2
+        run: |
+          brew install bash
+          echo "$(brew --prefix)/bin" >>"$GITHUB_PATH"
+      - name: Bash version
+        run: bash --version | head -1
+      - name: Syntax check
+        run: bash -n lib/*.sh main.sh init.sh tests/run.sh
+      - name: Tests
+        run: ./tests/run.sh
+      # BSD script has no -e: check the summary line instead of the exit status.
+      - name: Tests under a pseudo-terminal
+        run: |
+          script -q /dev/null ./tests/run.sh | tee pty.log
+          grep -q ' 0 failed' pty.log
+
+  bash-versions:
+    name: Bash 4.2 (minimum) and the 4.1 guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Official bash images are Alpine based (BusyBox): GNU tools are added first.
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the docs checks look up the commit named in docs/handoff.md
+      - name: Tests with Bash 4.2
+        run: |
+          docker run --rm -v "$PWD:/w" -w /w bash:4.2 sh -c '
+            apk add --no-cache coreutils diffutils findutils gawk git grep sed >/dev/null &&
+            bash --version | head -1 &&
+            bash tests/run.sh'
+      - name: Bash 4.1 is refused with a clear message
+        run: |
+          set +e
+          out=$(docker run --rm -v "$PWD:/w" -w /w bash:4.1 bash main.sh 2>&1)
+          status=$?
+          set -e
+          printf '%s\n' "$out"
+          [ "$status" -eq 1 ]
+          printf '%s\n' "$out" | grep -q 'requires Bash >= 4.2'

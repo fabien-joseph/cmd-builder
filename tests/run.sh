@@ -144,7 +144,9 @@ fi
 # ---------------------------------------------------------------------------
 # End-to-end tests
 # ---------------------------------------------------------------------------
-TMP=$(mktemp -d)
+# Physical path: on macOS mktemp gives /var/..., a symlink to /private/var/..., while
+# the framework resolves its own paths with cd -P.
+TMP=$(cd -P "$(mktemp -d)" && pwd)
 trap 'rm -rf "$TMP"' EXIT
 mkdir -p "$TMP/app" "$TMP/home/bin"
 cp -R "$ROOT"/{main.sh,init.sh,lib,builtin,core,templates} "$TMP/app/"
@@ -407,6 +409,12 @@ check "config symlink: target updated"        "cat '$TMP/dotconfig'"      "disab
 tt self plugins enable core:system >/dev/null 2>&1
 rm -f "$cfg" && mv "$TMP/dotconfig" "$cfg"
 
+# Bash 4.2: "declare -g" run inside a function does not create the global (decision 0011).
+check "no declare -g inside functions" \
+  "awk '/^[a-zA-Z_:]+\(\) *[{(]/ { f = 1 } f && /^[[:space:]]+declare -g/ { print FILENAME\":\"FNR } /^[})]/ { f = 0 }' '$ROOT'/lib/*.sh '$ROOT'/main.sh '$ROOT'/init.sh | wc -l" "0"
+# Bash 4.2 keeps the backslash of "${p/#$HOME/\~}" in double quotes: use tilde() in init.sh.
+check "no \\~ in parameter replacements" \
+  "grep -nE '^[[:space:]]*[^[:space:]#].*/\\\\~\\}' '$ROOT'/lib/*.sh '$ROOT'/main.sh '$ROOT'/init.sh '$ROOT'/builtin -r | wc -l" "0"
 # Bash version guard (the framework needs Bash >= 4.2)
 check "main.sh refuses Bash 4.1"  "bash -c 'BASH_VERSION=4.1.17; source \"\$0\"' '$TMP/app/main.sh'" "requires Bash >= 4.2"
 check "init.sh refuses Bash 4.1"  "bash -c 'BASH_VERSION=4.1.17; source \"\$0\"' '$TMP/app/init.sh'" "requires Bash >= 4.2"

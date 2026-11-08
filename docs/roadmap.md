@@ -23,33 +23,50 @@ Keep this file current: move items to **Done** when shipped, add follow-ups you 
   `templates/ai-guide.md` + `docs/plugin-authoring.md`; its worked example is run by the
   tests (decision 0010). Rules refined by three evaluation rounds with small models
   (method in `docs/testing.md`).
+- CI on GitHub Actions (decision 0011): Linux, macOS (Homebrew Bash), both also under a
+  pseudo-terminal, Bash 4.2 tests and the Bash 4.1 guard in Docker. Its first runs fixed two
+  real Bash 4.2 bugs (`declare -g` inside functions, `\~` in replacements).
 
 ## Next
 
+In this order (owner's choice, 2026-11-08):
+
+- [ ] **`self rename <new-name>`**: rename the root command (`mu` → `xx`) without breaking
+      anything: link in `~/.local/bin`, `~/.config/<name>/` (config kept), completion
+      files, rc blocks. Today `./init.sh xx` installs a second, independent command (new
+      empty config) and `./init.sh --uninstall mu` removes the old one: nothing breaks, but
+      the config (`disable` / `rename` lines) is not carried over. Must be idempotent and
+      resumable (rule 4).
+
+Accepted, not scheduled yet:
+
+- [ ] `self doctor` checks every `example` of a `flags.sh` against its own declarations
+      (unknown option, missing required argument), like the parser would. An AI-written
+      plugin had a `--help` example with undeclared flags.
+- [ ] A user plugin can *extend* an official one instead of shadowing it
+      (`plugins/system/disk/` adds `mu system disk` next to `mu system info`). Today the AI
+      guide has to steer users to another plugin name, or to `self new --core`.
+- [ ] Repeatable flags (`--tag a --tag b`) / list type.
+- [ ] Inherited flags: a flag declared on a parent available to all its subcommands,
+      **opt-in** per flag (not always relevant).
+- [ ] Command aliases (`mu backup ls` for `mu backup list`).
+- [ ] Hidden commands (not listed in help and completion, still runnable): for commands
+      still in development in a plugin that is already shared.
+- [ ] `self plugins install <git-url>`: clone a plugin into `plugins/`, with a **big
+      warning** that the plugin is not official and runs code on the machine, and a
+      confirmation (rule 5).
+- [ ] `self guide [request]`: optional request appended at the end of the guide, ready to
+      paste as a single message.
 - [ ] Automated test for zsh completion (needs zsh in the test environment).
 - [ ] Optional timeout for `--choices-from` (a slow command currently blocks <kbd>Tab</kbd>).
-- [ ] CI (GitHub Actions) running `tests/run.sh` on Linux and macOS (Homebrew Bash), also
-      under a pseudo-terminal (`script`) to catch tests that reach a prompt.
-- [ ] Optionally test the Bash version guard on a real Bash 4.1 (e.g. in a container).
 
 ## Ideas (not decided)
 
-- `self doctor` checks every `example` of a `flags.sh` against its own declarations (unknown
-  option, missing required argument), like the parser would. An AI-written plugin had a
-  `--help` example with undeclared flags.
-- Let a user plugin *extend* an official one instead of shadowing it (e.g. `plugins/system/disk/`
-  adds `mu system disk` next to `mu system info`). Today the AI guide has to steer users to
-  another plugin name, or to `self new --core` (files in the cmd-builder repository).
-- `self guide <request>`: put the user's request at the end of the guide, ready to paste
-  as a single message.
-- `self guide` in French (or other languages) for the AI-facing text; today the guide is in
-  English and tells the AI to talk in the user's language (file texts stay in English).
-- Repeatable flags (`--tag a --tag b`) / list type.
-- Inherited flags (a flag declared on a parent available to all subcommands).
-- Command aliases (`about`-level `alias ls` for `list`).
-- `mu self plugins install <git-url>` to clone a plugin into `plugins/`.
-- Hidden commands (not listed in help/completion).
-- Plugins in other languages with a helper library (Python) for `ui::`-like output.
+- Plugins in other languages with a helper library (Python) for `ui::`-like output. Kept,
+  not urgent.
+
+Rejected: the guide of `self guide` in French or other languages (it stays in English; the
+AI talks in the user's language, see decision 0010).
 
 ## Known limitations
 

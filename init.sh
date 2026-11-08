@@ -44,6 +44,11 @@ rc_begin="# >>> cmd-builder: $CB_NAME >>>"
 rc_end="# <<< cmd-builder: $CB_NAME <<<"
 zshrc=${ZDOTDIR:-$HOME}/.zshrc
 
+# Path for display, with $HOME shown as ~. Not "${p/#$HOME/\~}": Bash 4.2 keeps the backslash.
+tilde() {
+  if [[ $1 == "$HOME" || $1 == "$HOME"/* ]]; then printf '~%s' "${1#"$HOME"}"; else printf '%s' "$1"; fi
+}
+
 # ---------------------------------------------------------------------------
 # Uninstall. Each step is independent and first checks whether it was already
 # done: if the script is interrupted halfway, running it again simply finishes
@@ -71,7 +76,7 @@ uninstall_rc() {
   tmp=$real.cb-uninstall.tmp
   rm -f -- "$tmp" # possible leftover of a previous interruption
   if ! grep -qF "$rc_begin" "$real"; then
-    ui::info "${rc/#$HOME/\~}: already cleaned"
+    ui::info "$(tilde "$rc"): already cleaned"
     return 0
   fi
   while IFS= read -r line || [[ -n $line ]]; do
@@ -91,14 +96,14 @@ uninstall_rc() {
   if ((skip)); then
     # Begin marker without its end marker (edited by hand?): rewriting would drop the
     # whole end of the file, so leave it untouched.
-    ui::warn "${rc/#$HOME/\~}: '$rc_begin' found but not '$rc_end'; file left untouched, remove the block by hand"
+    ui::warn "$(tilde "$rc"): '$rc_begin' found but not '$rc_end'; file left untouched, remove the block by hand"
     uninstall_incomplete=1
     return 1
   fi
   ((pending)) && out+=('')
   if ((${#out[@]})); then printf '%s\n' "${out[@]}" >"$tmp"; else : >"$tmp"; fi
   chmod --reference="$real" "$tmp" 2>/dev/null || chmod "$(stat -f %Lp "$real" 2>/dev/null || echo 644)" "$tmp"
-  mv -f -- "$tmp" "$real" && ui::success "'$CB_NAME' block removed from ${rc/#$HOME/\~}"
+  mv -f -- "$tmp" "$real" && ui::success "'$CB_NAME' block removed from $(tilde "$rc")"
 }
 
 # Step 3: the files of ~/.config/<name>, one by one, then the directory if empty.
@@ -172,17 +177,17 @@ rc_block() {
   local shell=$1 rc=$2 begin=$rc_begin end=$rc_end
   local comp=$CB_CONFIG_DIR/completion.$shell
   if [[ -f $rc ]] && grep -qF "$begin" "$rc"; then
-    ui::info "already configured in ${rc/#$HOME/\~}"
+    ui::info "already configured in $(tilde "$rc")"
     return 0
   fi
-  ui::confirm "Enable '$CB_NAME' completion in ${rc/#$HOME/\~}?" y || return 1
+  ui::confirm "Enable '$CB_NAME' completion in $(tilde "$rc")?" y || return 1
   {
     printf '\n%s\n' "$begin"
     printf 'case ":$PATH:" in *":%s:"*) ;; *) export PATH="%s:$PATH" ;; esac\n' "$bin_dir" "$bin_dir"
     printf '[ -f "%s" ] && . "%s"\n' "$comp" "$comp"
     printf '%s\n' "$end"
   } >>"$rc"
-  ui::success "added to ${rc/#$HOME/\~}"
+  ui::success "added to $(tilde "$rc")"
 }
 
 configured=0 bash_ok=0 zsh_ok=0
@@ -218,7 +223,7 @@ echo
 if [[ -n $reload_rc ]]; then
   # This terminal read its rc file before the install: completion is not loaded here yet.
   ui::success "All set! Open a new terminal, or run this in the current one:"
-  printf '  source %s\n' "${reload_rc/#$HOME/\~}"
+  printf '  source %s\n' "$(tilde "$reload_rc")"
   ui::info "Then try: $CB_NAME --help"
 else
   ui::success "All set! Open a new terminal, then run: $CB_NAME --help"
