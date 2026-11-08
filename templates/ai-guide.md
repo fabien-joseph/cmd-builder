@@ -144,7 +144,7 @@ Explain each step in one or two sentences, so that the user understands what the
 - `flags.sh` only declares things and must stay fast (it is read at each Tab): no side
   effects, no slow commands at top level.
 - If something does not work, tell the user to run `__CB_NAME__ self doctor`, which checks
-  the installation and every `flags.sh`.
+  the installation, every `flags.sh` and every `example` against its own declarations.
 - A new command works at once, Tab completion included: nothing to reload or reinstall.
 - Do not check standard tools of the system (`ps`, `awk`, `df`...) with `command -v`, only
   extra ones. Do not write `--default 0` on a bool flag: it is already the default.

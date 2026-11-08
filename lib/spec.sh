@@ -51,7 +51,7 @@ cb::choice_ok() {
   _CB_CHOICES_LIST=()
   if [[ -n $static ]]; then
     read -ra _CB_CHOICES_LIST <<<"$static"
-  elif [[ -n $strict ]]; then
+  elif [[ -n $strict && -z ${_CB_NO_DYNAMIC:-} ]]; then
     while IFS= read -r line; do
       [[ -n $line ]] && _CB_CHOICES_LIST+=("${line%%$'\t'*}")
     done < <(cb::choices_of "$kind" "$name")

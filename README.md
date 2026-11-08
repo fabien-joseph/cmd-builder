@@ -221,7 +221,7 @@ rename  core:docker core-docker     # exposes it under another name
 | `mu self plugins enable <plugin>` | re-enables a plugin (name or id, Tab offers the disabled plugins) |
 | `mu self plugins disable <plugin>` | disables a plugin (name or id, Tab offers the active plugins) |
 | `mu self rename <name> [--keep-old]` | renames the root command, keeping the config (see [Rename the root command](#rename-the-root-command)) |
-| `mu self doctor` | checks the installation, the config, conflicts and every `flags.sh` |
+| `mu self doctor` | checks the installation, the config, conflicts, every `flags.sh` and every `example` |
 | `mu self completion bash\|zsh` | prints the completion script |
 | `mu self guide [-o file]` | prints a guide for an AI assistant (ChatGPT, Claude…) that has no access to your machine, so it can tell you step by step how to create a command (`--no-commands`: do not list your commands) |
 

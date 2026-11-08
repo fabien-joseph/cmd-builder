@@ -384,6 +384,44 @@ check "parser: negative number positional" "tt neg -5 kb"                  "coun
 check "completion: after a negative number" "tt __complete -- neg -5 ''"   "kb"
 rm -rf "$P/neg"
 
+# doctor: every example is checked like the parser would (warnings, the command still works)
+mkdir -p "$P/ex/sub" "$P/ex/grp/leaf"
+cat >"$P/ex/flags.sh" <<'X'
+about "Examples"
+flag key -k string "Key" --required
+flag env string "Env" --choices-from "echo dev" --strict
+arg name "Name"
+example "ex -k K Bob" "valid"
+example "ex -k K --env prod 'Bob Smith'" "valid: quotes, dynamic choice not validated"
+example "ex --help" "valid: help"
+example "ex Bob" "missing required flag"
+example "ex -k K Bob --nope" "unknown option"
+example "ex -k K" "missing argument"
+example "ex -k 'K Bob" "unbalanced quotes"
+example "tt ex -k K Bob" "root name"
+example "nothere x" "unknown command"
+example "ex sub" "valid: subcommand"
+example "ex grp nope" "unknown subcommand of a router"
+X
+echo 'echo ex' >"$P/ex/cmd.sh"
+echo 'about "Sub"' >"$P/ex/sub/flags.sh" && echo 'echo sub' >"$P/ex/sub/cmd.sh"
+echo 'about "Group"' >"$P/ex/grp/flags.sh"
+echo 'about "Leaf"' >"$P/ex/grp/leaf/flags.sh" && echo 'echo leaf' >"$P/ex/grp/leaf/cmd.sh"
+tt self doctor >"$TMP/doctor.out" 2>&1
+check "doctor examples: valid ones not reported" "grep -c \"example 'ex -k K Bob'\\|'Bob Smith'\\|example 'ex --help'\\|example 'ex sub'\" '$TMP/doctor.out'" "0"
+check "doctor examples: required flag"        "cat '$TMP/doctor.out'" "plugins/ex: example 'ex Bob': --key is required"
+check "doctor examples: unknown option"       "cat '$TMP/doctor.out'" "example 'ex -k K Bob --nope': unknown option '--nope'"
+check "doctor examples: missing argument"     "cat '$TMP/doctor.out'" "example 'ex -k K': missing argument: <name>"
+check "doctor examples: unbalanced quotes"    "cat '$TMP/doctor.out'" ": unbalanced quotes"
+check "doctor examples: root name"            "cat '$TMP/doctor.out'" "starts with 'tt': write it without the root name"
+check "doctor examples: unknown command"      "cat '$TMP/doctor.out'" "example 'nothere x': unknown command 'nothere'"
+check "doctor examples: router subcommand"    "cat '$TMP/doctor.out'" "example 'ex grp nope': unknown subcommand 'nope'"
+echo 'rename user:ex ex2' >>"$XDG_CONFIG_HOME/tt/config"
+check "doctor examples: renamed plugin, dir name accepted" "tt self doctor 2>&1 | grep -c \"unknown command 'ex'\"" "0"
+grep -v 'rename user:ex' "$XDG_CONFIG_HOME/tt/config" >"$TMP/cfg" && mv "$TMP/cfg" "$XDG_CONFIG_HOME/tt/config"
+rm -rf "$P/ex" "$TMP/doctor.out"
+check "doctor examples: built-in and official commands are valid" "tt self doctor 2>&1 | grep -c ': example '" "0"
+
 # doctor: the status of the last command of flags.sh does not matter
 mkdir -p "$P/cond"
 printf '%s\n' 'about "Conditional"' 'false && flag podman bool "Use podman"' >"$P/cond/flags.sh"

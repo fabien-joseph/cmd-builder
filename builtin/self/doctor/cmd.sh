@@ -8,6 +8,45 @@ ko() { printf '  %s✖%s %s\n' "$UI_RED" "$UI_RESET" "$*"; ((errors++)); }
 wa() { printf '  %s⚠%s %s\n' "$UI_YELLOW" "$UI_RESET" "$*"; ((warnings++)); }
 rel() { printf '%s' "${1#"$CB_ROOT"/}"; }
 
+# Checks one `example` of a command the way the parser would see it. <top> and <name>:
+# the plugin the flags.sh belongs to and its exposed name. Prints the problem, if any.
+check_example() {
+  local top=$1 name=$2 ex=$3 dir out
+  local -a w=()
+  # Split like the shell would (quotes), without expanding anything: xargs does that.
+  out=$(printf '%s\n' "$ex" | xargs printf '%s\n' 2>&1) || { echo "unbalanced quotes"; return; }
+  [[ -n $out ]] && mapfile -t w <<<"$out"
+  ((${#w[@]})) || { echo "empty command line"; return; }
+  # The plugin itself, also under its directory name (renamed or shadowed plugin).
+  if [[ ${w[0]} == "$name" || ${w[0]} == "${top##*/}" ]]; then
+    dir=$top
+  elif ! dir=$(cb::plugin_dir "${w[0]}"); then
+    if [[ ${w[0]} == "$CB_NAME" ]]; then
+      echo "starts with '$CB_NAME': write it without the root name"
+    else
+      echo "unknown command '${w[0]}'"
+    fi
+    return
+  fi
+  w=("${w[@]:1}")
+  while ((${#w[@]})) && cb::is_child "$dir" "${w[0]}"; do
+    dir=$dir/${w[0]}
+    w=("${w[@]:1}")
+  done
+  # In a subshell: the parser exits on the first error. Dynamic --strict choices are not
+  # validated (their values depend on the machine).
+  (
+    ui::error() { printf '%s\n' "$*" >&2; }
+    cb::spec_load "$dir" 2>/dev/null || exit 0 # an invalid flags.sh is reported elsewhere
+    if [[ -z $(cb::executable "$dir") ]]; then
+      ((${#w[@]} == 0)) || [[ ${w[0]} == -h || ${w[0]} == --help ]] || echo "unknown subcommand '${w[0]}'"
+      exit 0
+    fi
+    _CB_NO_DYNAMIC=1
+    cb::parse "$dir" "x" "${w[@]}" 2>&1 >/dev/null | head -n 1
+  ) 2>/dev/null
+}
+
 ui::title "Environment"
 ok "Bash $BASH_VERSION"
 if command -v git >/dev/null; then ok "$(git --version)"; else wa "git not found (needed for self update)"; fi
@@ -41,13 +80,22 @@ for c in "${_CB_CONFLICTS[@]}"; do wa "$c"; done
 echo
 ui::title "Commands"
 count=0 bad=0
-dirs=("$CB_ROOT/builtin/self")
-for id in "${_CB_IDS[@]}"; do dirs+=("${_CB_ID_DIR[$id]}"); done
-for top in "${dirs[@]}"; do
+dirs=("$CB_ROOT/builtin/self") names=(self)
+for id in "${_CB_IDS[@]}"; do dirs+=("${_CB_ID_DIR[$id]}") names+=("${_CB_ID_NAME[$id]}"); done
+for t in "${!dirs[@]}"; do
+  top=${dirs[t]}
   while IFS= read -r d; do
     ((count++))
     before=$errors
-    if out=$( (cb::spec_load "$d") 2>&1 >/dev/null); then :; else ko "$(rel "$d"): ${out:-invalid flags.sh}"; fi
+    if out=$( (cb::spec_load "$d") 2>&1 >/dev/null); then
+      # Examples, checked against the declarations (warnings: the command itself works).
+      while IFS= read -r -d '' ex; do
+        msg=$(check_example "$top" "${names[t]}" "$ex")
+        [[ -n $msg ]] && wa "$(rel "$d"): example '$ex': $msg"
+      done < <(cb::spec_load "$d" >/dev/null 2>&1; for ((i = 0; i < ${#_CB_EXAMPLES[@]}; i += 2)); do printf '%s\0' "${_CB_EXAMPLES[i]}"; done)
+    else
+      ko "$(rel "$d"): ${out:-invalid flags.sh}"
+    fi
     [[ -f $d/cmd && ! -x $d/cmd ]] && ko "$(rel "$d")/cmd is not executable (chmod +x)"
     [[ -f $d/cmd.sh && -f $d/cmd ]] && wa "$(rel "$d"): both cmd.sh and cmd exist, cmd.sh is used"
     if [[ -z $(cb::executable "$d") && -z $(cb::children "$d") ]]; then

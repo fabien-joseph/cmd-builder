@@ -85,6 +85,7 @@ functions (`name=()`): Bash 4.2 ignores `declare -g` for an assignment inside a 
 | `_CB_FLAGS` + `_CB_F_*` (assoc. by flag name) | `flag` | `TYPE`, `SHORT`, `DESC`, `DEFAULT`, `REQ`, `CHOICES`, `CHFROM`, `STRICT`; `_CB_F_BYSHORT` maps short → name |
 | `_CB_ARGS` + `_CB_A_*` (assoc. by arg name) | `arg` | `DESC`, `OPT`, `VAR`, `CHOICES`, `CHFROM`, `STRICT` |
 | `_CB_VAL`, `_CB_AVAL`, `_CB_POS` | `cb::parse` | parsed flag values, arg values, positionals |
+| `_CB_NO_DYNAMIC` | `self doctor` | when set, `cb::choice_ok` does not validate `--choices-from --strict` values |
 
 ## Exit codes
 
@@ -145,7 +146,7 @@ best examples of the framework in use. They source `lib/core.sh` to access inter
 | `self plugins` | list plugins with id and state |
 | `self plugins enable` / `self plugins disable` | toggle a plugin in the config (name or id, dynamic completion) |
 | `self rename` | rename the root command: plan + one confirmation, then new link, config moved, completion regenerated, rc blocks replaced in place, old config dir and old link last; resumable; `--keep-old` keeps the old name with its config as a symlink (decision 0012) |
-| `self doctor` | check environment, link, completion files, config, conflicts, every `flags.sh` |
+| `self doctor` | check environment, link, completion files, config, conflicts, every `flags.sh`, and every `example` (routed from the root like `cb::main`, the plugin also accepted under its directory name, then `cb::parse` in a subshell with `_CB_NO_DYNAMIC=1`; warnings) |
 | `self completion` | print the bash or zsh completion script |
 | `self guide` | print `templates/ai-guide.md` filled in: root name, paths, system, Bash version, existing commands (unless `--no-commands`), help of `self new`, and the part of `docs/plugin-authoring.md` between `<!-- guide:begin -->` and `<!-- guide:end -->` (decision 0010); `-o` writes a file, confirm before overwriting |
 
