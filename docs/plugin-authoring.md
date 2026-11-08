@@ -23,11 +23,28 @@ plugins/backup/              → mu backup          (plugin id: user:backup)
 ```
 
 - A directory is a command if it contains `flags.sh`, `cmd.sh` or `cmd`.
-- Directories whose name starts with `_` or `.` are ignored.
+- Directories whose name starts with `_` or `.` are ignored; `+` marks an extension (below).
 - `cmd.sh` is run with Bash, with the `ui::` helpers loaded. `cmd` can be any executable
   (Python, binary…) with a shebang and the executable bit; it receives the same environment.
 - Official plugins live in `core/` (id `core:<name>`), user plugins in `plugins/`
-  (id `user:<name>`). `self` is reserved.
+  (id `user:<name>`). `self` is reserved. `plugins/system/` would **shadow** the official
+  `system` plugin entirely.
+- **Adding to an official plugin**: a directory `plugins/+<plugin>/` is an *extension*
+  (id `user:+<plugin>`): its subcommands are added to the official plugin, which keeps
+  its own commands. `mu self new system disk` creates it for you:
+  ```
+  plugins/+system/            extends core:system (no files of its own)
+  ├── disk/                   → mu system disk       (next to the official mu system info)
+  └── +net/                   extends the official group "mu system net"
+      └── trace/              → mu system net trace
+  ```
+  The `+` works at every level. A plain directory with the name of an official
+  subcommand (`plugins/+system/info/`) replaces it (reported, like a plugin conflict).
+  For a command of an extension, `CB_PLUGIN_ROOT` is `plugins/+system` (its own `_lib/`).
+  An extension follows its official plugin: renamed with it, inactive when it is
+  disabled, shadowed or missing (reported by `self doctor` and `self plugins`). It can be
+  disabled itself (`disable user:+system`), not renamed. Files at the root of an extension
+  (`plugins/+system/flags.sh`) are ignored and reported.
 - Scaffold with `mu self new <path…>` (see `mu self new --help`).
 
 ## `flags.sh` DSL

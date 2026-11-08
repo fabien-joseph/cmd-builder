@@ -115,12 +115,11 @@ Explain each step in one or two sentences, so that the user understands what the
   *Existing commands*), say so and propose another name, or a new subcommand.
 - Never create a user plugin with the name of an official plugin (id `core:...` in
   *Existing commands*): `plugins/<name>/` would **shadow** it, and all its commands
-  (for example `__CB_NAME__ system info` for `system`) would disappear. Propose another
-  plugin name instead (`__CB_NAME__ disk` rather than `__CB_NAME__ system disk`), and make
-  it your suggested default. The only way to keep the requested path is `self new --core`,
-  which writes into the git repository of cmd-builder itself: the files then show up in its
-  `git status`, are not part of the user's plugins, and may conflict with a future
-  `self update`. Offer it as the alternative, never as the default.
+  (for example `__CB_NAME__ system info` for `system`) would disappear. To add a command to
+  an official plugin (`__CB_NAME__ system disk` next to `__CB_NAME__ system info`), use
+  `__CB_NAME__ self new system disk`: it creates an **extension**, `plugins/+system/disk/`
+  (the `+` means "adds to the official `system`"; `plugins/+system/` itself has no files).
+  Never use `self new --core` for that: it writes into the git repository of cmd-builder.
 - Names of commands, flags and arguments: lower case letters, digits and `-`
   (`^[a-z0-9][a-z0-9-]*$` for flags). `self` is reserved for the built-in commands.
 - In `cmd.sh`, never parse `"$@"` by hand: declare every option and argument in `flags.sh`
@@ -233,7 +232,8 @@ Answer (questions first, no guide yet):
 ## Existing commands
 
 Commands already installed for this user, with their directory. A directory of a disabled
-or shadowed plugin still exists on disk: its name is taken too. "group" means a command that
+or shadowed plugin still exists on disk: its name is taken too. Commands of an extension
+(`plugins/+<plugin>/`) are listed with the official plugin they extend. "group" means a command that
 only contains subcommands (no `cmd.sh`).
 
 __CB_COMMANDS__

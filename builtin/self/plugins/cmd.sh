@@ -16,8 +16,11 @@ for id in "${_CB_IDS[@]}"; do
     disabled) s="${UI_DIM}disabled${UI_RESET}" ;;
     reserved) s="${UI_RED}reserved name (self)${UI_RESET}" ;;
     shadowed:*) s="${UI_YELLOW}shadowed by ${state#shadowed:}${UI_RESET}" ;;
+    extends:*) s="${UI_GREEN}extends ${state#extends:}${UI_RESET}" ;;
+    inactive:*) s="${UI_YELLOW}inactive (${state#inactive:} is not active)${UI_RESET}" ;;
+    orphan) s="${UI_YELLOW}inactive (extends nothing)${UI_RESET}" ;;
   esac
-  [[ $name != "${id#*:}" ]] && s+=" ${UI_DIM}(renamed)${UI_RESET}"
+  [[ $name != "${id#*:}" && $id != user:+* ]] && s+=" ${UI_DIM}(renamed)${UI_RESET}"
   rows+=("$(printf '%-18s %-20s' "$name" "$id")" "$s")
 done
 ui::title "$(printf '  %-18s %-20s  %s' NAME ID STATE)"

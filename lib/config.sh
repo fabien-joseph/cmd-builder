@@ -8,7 +8,7 @@
 declare -gA _CB_DISABLED=() _CB_RENAME=()
 declare -ga _CB_CONFIG_ERRORS=()
 
-cb::valid_id() { [[ $1 =~ ^(core|user):[a-zA-Z0-9][a-zA-Z0-9_-]*$ ]]; }
+cb::valid_id() { [[ $1 =~ ^(core|user):[a-zA-Z0-9][a-zA-Z0-9_-]*$ || $1 =~ ^user:\+[a-zA-Z0-9][a-zA-Z0-9_-]*$ ]]; }
 
 cb::config_load() {
   local f=$CB_CONFIG_DIR/config line n=0 kw a b extra
@@ -28,7 +28,9 @@ cb::config_load() {
         fi
         ;;
       rename)
-        if cb::valid_id "$a" && cb::valid_name "$b" && [[ -z $extra ]]; then
+        if [[ $a == user:+* ]]; then
+          _CB_CONFIG_ERRORS+=("line $n: '$a' is an extension, it takes the name of the plugin it extends: it cannot be renamed")
+        elif cb::valid_id "$a" && cb::valid_name "$b" && [[ -z $extra ]]; then
           _CB_RENAME[$a]=$b
         else
           _CB_CONFIG_ERRORS+=("line $n: expected 'rename <core|user>:<plugin> <new-name>'")
