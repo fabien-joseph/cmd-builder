@@ -47,6 +47,19 @@ check "<description>" "<shell command>" "<expected substring of stdout+stderr>"
   `check "…" "bashcomp nullglob 'tt demo '" "[greet]"`.
 - `init.sh` is copied into the sandbox too (`$TMP/app/init.sh`); run it with an
   unused name (e.g. `zz`) so it does not affect the `tt` install used by other tests.
+- Package managers are never run for real: the `self deps` block puts a fake `apt-get`
+  (it logs its arguments to `$TMP/pm.log` and "installs" a package by creating a command
+  with its name) and a fake `sudo` (`"$@"`) in `$TMP/stubs`, used through `sp <command>`
+  (`PATH=$S:$PATH`). Use invented tool names (`cbx`, `cby`): CI machines have real `jq`.
+- `ui::select` reads keys from `_CB_TTY` like the other prompts: write them to a file
+  (`printf '\e[B\n' >"$TMP/keys"` = arrow down + Enter; `3` = third option; `q` = cancel).
+  Under a real pseudo-terminal it can be checked with `script` and keys piped in.
+- The sandbox config of `tt` is shared by all tests and accumulates lines (`rename
+  core:system sys`...). A block that needs a known config saves it first
+  (`cp "$cfg" "$TMP/cfg.orig"`), filters it, and restores it at the end (see the
+  extensions block).
+- `self rename` tests install a `zz` root command with `init.sh` and rename it to `yy` /
+  `ww`; they also simulate an interrupted rename by doing its first steps by hand.
 - The Bash version guard is tested by sourcing an entry script after setting
   `BASH_VERSION=4.1.17`.
 
@@ -121,6 +134,10 @@ by hand with small models (the weakest available, e.g. Haiku):
 4. Check: questions only when needed and each with a default; texts of the files in English;
    no assumption beyond the *Setup* table; existing and official plugins left alone;
    confirmation for destructive actions; the commands really work.
+
+Since extensions and `requires` (decisions 0013, 0014), also check that the answer uses
+`plugins/+<plugin>/` paths for official plugins and declares extra tools with `requires`
+(plus a `self deps install` step), not `command -v ... || ui::die`.
 
 Requests worth keeping in the set: a destructive command (`git clean-branches`), a request
 on an official plugin (`system disk`, which must not create `plugins/system/`), a vague

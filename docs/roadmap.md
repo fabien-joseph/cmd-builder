@@ -44,7 +44,11 @@ Keep this file current: move items to **Done** when shipped, add follow-ups you 
 
 Next step (2026-11-08):
 
-- [ ] Agree with the owner on the order of the *Accepted* list below.
+1. [ ] **Global review** of the project: a session where the agent acts as a software
+   architect leading sub-agents (owner's prompt, review only, report + correction plan
+   to validate before any change).
+2. [ ] Then agree with the owner on the order of the *Accepted* list below (and of the
+   review's correction plan).
 
 Accepted, not scheduled yet:
 
@@ -80,6 +84,13 @@ AI talks in the user's language, see decision 0010).
   (help rows, `system info`) break alignment. Keep left columns ASCII.
 - Bash completion re-splits the line on whitespace only: quoted words containing spaces are
   not handled.
+- `requires` checks a command name: a package that installs it under another name
+  (Debian `fd-find` → `fdfind`) shows as "still not found" after `self deps install`.
+- `self deps update` on pacman is a full system upgrade (`pacman -Syu`): Arch does not
+  support partial upgrades.
+- Extensions (`plugins/+x/`) can only extend official plugins, not other user plugins.
+- A mistyped subcommand after a command that has its own `cmd.sh` gives "unexpected
+  argument" without a "Did you mean" suggestion (`mu self deps manager`).
 
 ## Manual recipe: testing `self update`
 
