@@ -87,8 +87,8 @@ the current one, use a subshell (that is what `cb::about_of` does).
 | Code | Meaning | Where |
 |---|---|---|
 | 0 | success, or help displayed | everywhere |
-| 1 | generic failure (`ui::die` default) | commands, `self doctor` with errors |
-| 2 | usage error: unknown command/option, invalid or missing value | `lib/parse.sh`, `lib/router.sh` |
+| 1 | generic failure (`ui::die` default) | commands, `self doctor` with errors, `init.sh --uninstall` that left an rc block in place |
+| 2 | usage error: unknown command/option, invalid or missing value | `lib/parse.sh`, `lib/router.sh`, `init.sh` without a name |
 | 3 | invalid `flags.sh` (DSL error, reported as `file:line : message`) | `cb::_spec_err` |
 
 ## Completion protocol
@@ -104,6 +104,11 @@ by the current word's prefix). Empty output means "fall back to file completion"
 The bash adapter re-splits `COMP_LINE` itself because `COMP_WORDS` also splits on `:` and
 `=`, then strips the part bash will not replace. The engine reuses the real routing and
 spec loading, so completion can never disagree with execution.
+The bash adapter reads candidates with `mapfile` so the user's `nullglob` / `failglob` never
+glob them. `--flag=<TAB>` returns the flag's choices as full `--flag=value` words, and a
+`-<digit>…` word counts as a positional (negative number), exactly as in `cb::parse`.
+`cb::spec_load` returns 0 whatever the last command of `flags.sh` returns: only DSL
+errors (exit 3) make a `flags.sh` invalid.
 
 `--choices-from` commands are evaluated with `eval` in a subshell, in the user's current
 directory, with `CB_COMMAND_DIR` / `CB_PLUGIN_ROOT` exported and the `flags.sh` functions
@@ -121,6 +126,8 @@ rename  <core|user>:<plugin> <new-name>
 
 Invalid lines do not stop the program; they are collected in `_CB_CONFIG_ERRORS` and
 reported by `self doctor`.
+`self plugins enable|disable` rewrite the file atomically (temp file + `mv`); when the config
+is a symlink (dotfiles), they rewrite its target and keep the link.
 
 ## Built-in commands (`builtin/self/`)
 
@@ -145,6 +152,6 @@ best examples of the framework in use. They source `lib/core.sh` to access inter
 | `~/.local/bin/<name>` → `main.sh` | install | yes, only if it points to this checkout |
 | `~/.config/<name>/config` | install (`cb::config_ensure`) | after confirmation |
 | `~/.config/<name>/completion.{bash,zsh}` | install, `self update` | yes |
-| block `# >>> cmd-builder: <name> >>>` … `<<<` in `~/.bashrc`, `~/.zshrc` | install, after confirmation | yes (atomic rewrite, follows symlinked rc files) |
+| block `# >>> cmd-builder: <name> >>>` … `<<<` in `~/.bashrc`, `~/.zshrc` | install, after confirmation | yes (atomic rewrite, follows symlinked rc files; refused with a warning if the end marker is missing) |
 
 Several installs under different names can coexist: everything is keyed by `CB_NAME`.

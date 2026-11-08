@@ -1,6 +1,6 @@
 # 0004. Require Bash ≥ 4, pure Bash, no dependencies
 
-- Status: Accepted
+- Status: Accepted (minimum version amended to 4.2 by [0008](0008-require-bash-4-2.md))
 - Date: 2026-11-08
 
 ## Context

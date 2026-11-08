@@ -34,10 +34,10 @@ README.md            user documentation
 
 ## Non-negotiable rules
 
-1. **Pure Bash ≥ 4, no dependencies.** Only Bash builtins and POSIX tools present on Linux
+1. **Pure Bash ≥ 4.2, no dependencies.** Only Bash builtins and POSIX tools present on Linux
    and macOS (`sed`, `sort`, `grep`, `git` for updates). No `jq`, `yq`, `python`, GNU-only
    flags (`readlink -f`, `sed -i` without care), no `bash` ≥ 5 features.
-   macOS users must install Bash 4+ — see [decision 0004](docs/decisions/0004-require-bash-4.md).
+   macOS users must install Bash 4.2+ — see [decisions 0004](docs/decisions/0004-require-bash-4.md) and [0008](docs/decisions/0008-require-bash-4-2.md).
 2. **The plugin contract is a public API.** `flags.sh` DSL, the `FLAG_*` / `ARG_*` / `CB_*`
    environment variables, `"$@"`, the `ui::` helpers and the directory layout are used by
    plugins we do not control. Never break them; extend them compatibly.

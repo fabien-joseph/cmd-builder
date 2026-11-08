@@ -10,7 +10,8 @@ __CB_FUNC__() {
   # Bash only replaces what follows the last ":" or "=": strip that prefix.
   wb=${COMP_WORDBREAKS//[^:=]/}
   [[ -n $wb ]] && prefix=${cur%"${cur##*[$wb]}"}
-  out=($(__CB_NAME__ __complete -- "${words[@]:1}" 2>/dev/null))
+  # mapfile, not out=($(...)): no pathname expansion of "*", "?" or "[" (nullglob/failglob).
+  mapfile -t out < <(__CB_NAME__ __complete -- "${words[@]:1}" 2>/dev/null)
   COMPREPLY=()
   for line in "${out[@]}"; do
     line=${line%%$'\t'*}

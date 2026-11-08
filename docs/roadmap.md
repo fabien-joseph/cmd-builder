@@ -12,12 +12,18 @@ Keep this file current: move items to **Done** when shipped, add follow-ups you 
 - `init.sh` install and idempotent `--uninstall`.
 - Dynamic choices: `--choices-from` with optional `--strict`.
 - Contributor docs for any AI agent (`AGENTS.md`, `docs/`), doc consistency tests.
+- Review fixes (ultrareview of `feat/core`): `init.sh` usage without a name, rc block
+  without end marker left untouched, bash completion immune to `nullglob`/`failglob`,
+  `--flag=<TAB>` completion, negative numbers in completion, `self doctor` no longer
+  flags `flags.sh` by their last command status, `self new` writes nothing when refused,
+  symlinked config kept, Bash 4.2 minimum (decision 0008).
 
 ## Next
 
 - [ ] Automated test for zsh completion (needs zsh in the test environment).
 - [ ] Optional timeout for `--choices-from` (a slow command currently blocks <kbd>Tab</kbd>).
 - [ ] CI (GitHub Actions) running `tests/run.sh` on Linux and macOS (Homebrew Bash).
+- [ ] Optionally test the Bash version guard on a real Bash 4.1 (e.g. in a container).
 
 ## Ideas (not decided)
 

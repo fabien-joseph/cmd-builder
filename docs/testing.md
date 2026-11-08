@@ -38,6 +38,13 @@ check "<description>" "<shell command>" "<expected substring of stdout+stderr>"
 - Interactive prompts read `/dev/tty`; in tests there is none, so `ui::confirm` answers
   "no". To test the "yes" path manually, run under a pseudo-terminal:
   `(sleep 1; printf 'y\n') | script -qec "<command>" /dev/null`.
+- To test the bash adapter as an interactive shell would run it, use
+  `bashcomp "<shopt options>" "<command line>"` (prints `COMPREPLY` as `[a][b]`), e.g.
+  `check "…" "bashcomp nullglob 'tt demo '" "[greet]"`.
+- `init.sh` is copied into the sandbox too (`$TMP/app/init.sh`); run it with an
+  unused name (e.g. `zz`) so it does not affect the `tt` install used by other tests.
+- The Bash version guard is tested by sourcing an entry script after setting
+  `BASH_VERSION=4.1.17`.
 
 Group new tests with the related section (`# Parsing`, `# Completion`, …).
 

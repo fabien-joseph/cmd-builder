@@ -11,7 +11,7 @@ my-laptop · Linux 6.18 · up 50 min
 
 ## Installation
 
-Requirements: **Bash ≥ 4** (on macOS: `brew install bash`) and git.
+Requirements: **Bash ≥ 4.2** (on macOS: `brew install bash`) and git.
 
 ```bash
 git clone git@github.com:fabien-joseph/cmd-builder.git
@@ -34,6 +34,9 @@ to `~/.bashrc` / `~/.zshrc`, the completion scripts and, after confirmation, the
 Each step is independent and checks whether it is already done: if the uninstall is
 interrupted halfway, run it again and it finishes the job. The cmd-builder directory and your
 plugins are left untouched.
+If the `>>>` marker of the rc block is there but its `<<<` end marker is not (edited by
+hand), the rc file is left untouched with a warning and the uninstall exits with code 1:
+remove the block by hand. `./init.sh` without a name only prints the usage.
 
 ## Layout
 

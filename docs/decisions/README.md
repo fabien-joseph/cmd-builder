@@ -10,10 +10,11 @@ think it should change, write a new record that supersedes the old one (and mark
 | [0001](0001-one-directory-per-command.md) | One directory per command, `flags.sh` + `cmd.sh` side by side | Accepted |
 | [0002](0002-core-and-user-plugins.md) | Official plugins in `core/`, user plugins in a git-ignored `plugins/` | Accepted |
 | [0003](0003-name-conflicts.md) | User plugin shadows core plugin; `rename` / `disable` in config; `self` reserved | Accepted |
-| [0004](0004-require-bash-4.md) | Require Bash ≥ 4, pure Bash, no dependencies | Accepted |
+| [0004](0004-require-bash-4.md) | Require Bash ≥ 4, pure Bash, no dependencies | Accepted (minimum amended to 4.2 by 0008) |
 | [0005](0005-values-as-environment-variables.md) | Parsed values passed as `FLAG_*` / `ARG_*` env vars to a fresh process | Accepted |
 | [0006](0006-dynamic-choices-not-strict-by-default.md) | `--choices-from` suggests only, `--strict` to validate | Accepted |
 | [0007](0007-idempotent-uninstall.md) | Uninstall in `init.sh`, as independent idempotent steps | Accepted |
+| [0008](0008-require-bash-4-2.md) | Minimum Bash version raised to 4.2 (amends 0004) | Accepted |
 
 ## Template
 

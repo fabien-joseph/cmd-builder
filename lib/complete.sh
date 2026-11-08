@@ -55,7 +55,7 @@ cb::complete() {
   local n=$((${#words[@]} - 1))
   local cur=${words[n]} dir name i start w pos=0 skip=0 endopts=0 c
 
-  # Premier niveau : plugins + self.
+  # First level: plugins + self.
   if ((n == 0)); then
     if [[ $cur == -* ]]; then
       cb::_cand "$cur" --help "Show help"
@@ -93,6 +93,12 @@ cb::complete() {
       endopts=1
       continue
     fi
+    # "-5" is a positional (negative number) unless -5 is a declared short option,
+    # same rule as the parser.
+    if ((!endopts)) && [[ $w =~ ^-[0-9] && -z ${_CB_F_BYSHORT[${w:1:1}]:-} ]]; then
+      ((pos++))
+      continue
+    fi
     if ((!endopts)) && [[ $w == -?* ]]; then
       cb::_takes_value "$w" && skip=1
       continue
@@ -103,6 +109,18 @@ cb::complete() {
   # Value of an option (e.g. --format <TAB>): its choices, otherwise files.
   if ((skip)); then
     cb::_choice_cands "$cur" F "$_CB_TV_FLAG"
+    return 0
+  fi
+
+  # Attached value (e.g. --format=<TAB>): the flag's choices, prefixed with "--format=".
+  if ((!endopts)) && [[ $cur == --*=* ]]; then
+    name=${cur%%=*}
+    name=${name#--}
+    if [[ -n ${_CB_F_TYPE[$name]+x} && ${_CB_F_TYPE[$name]} != bool ]]; then
+      while IFS= read -r w; do
+        printf -- '--%s=%s\n' "$name" "$w"
+      done < <(cb::_choice_cands "${cur#*=}" F "$name")
+    fi
     return 0
   fi
 

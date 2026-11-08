@@ -4,8 +4,8 @@
 # and the name of the link becomes the name of the root command.
 
 case ${BASH_VERSION:-} in
-  '' | [0-3].*)
-    printf '%s\n' "cmd-builder requires Bash >= 4 (current: ${BASH_VERSION:-none})." \
+  '' | [0-3].* | 4.[01].*)
+    printf '%s\n' "cmd-builder requires Bash >= 4.2 (current: ${BASH_VERSION:-none})." \
       "On macOS: brew install bash" >&2
     exit 1
     ;;

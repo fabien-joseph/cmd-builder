@@ -86,6 +86,9 @@ cb::spec_load() {
   _CB_SPEC_FILE=$f
   # shellcheck disable=SC1090
   source "$f"
+  # The status of the file's last command is meaningless (e.g. "cmd && flag ..."):
+  # DSL errors exit with code 3 through cb::_spec_err.
+  return 0
 }
 
 # Summary (about) of a command, without touching the current state.

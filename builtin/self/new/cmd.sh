@@ -8,6 +8,11 @@ for p in "$@"; do
 done
 [[ $1 == self ]] && ui::die "'self' is reserved for $CB_NAME"
 
+# Refuse before writing anything: a refused run must leave existing commands untouched.
+target=$base/$(IFS=/; printf '%s' "$*")
+exe=$(cb::executable "$target")
+[[ -n $exe ]] && ui::die "'$CB_NAME $*' already has an executable: ${exe#"$CB_ROOT"/}"
+
 plugin_new=0
 [[ -d $base/$1 ]] || plugin_new=1
 created=()
@@ -22,7 +27,8 @@ for name in "$@"; do
     mkdir "$dir"
     created+=("$dir/")
   fi
-  [[ -f $dir/flags.sh ]] && continue
+  # An existing command (flags.sh, cmd.sh or cmd) is left as is.
+  cb::is_command_dir "$dir" && continue
   if ((i == $#)); then
     about=${FLAG_ABOUT:-TODO: describe this command}
     {
@@ -45,9 +51,6 @@ TPL
   fi
   created+=("$dir/flags.sh")
 done
-
-exe=$(cb::executable "$dir")
-[[ -n $exe ]] && ui::die "'$CB_NAME $*' already has an executable: ${exe#"$CB_ROOT"/}"
 
 {
   printf '# %s %s\n' "$CB_NAME" "$*"

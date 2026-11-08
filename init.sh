@@ -11,8 +11,8 @@
 # simply finishes on the next run.
 
 case ${BASH_VERSION:-} in
-  '' | [0-3].*)
-    printf '%s\n' "cmd-builder requires Bash >= 4 (current: ${BASH_VERSION:-none})." \
+  '' | [0-3].* | 4.[01].*)
+    printf '%s\n' "cmd-builder requires Bash >= 4.2 (current: ${BASH_VERSION:-none})." \
       "On macOS: brew install bash, then run ./init.sh again" >&2
     exit 1
     ;;
@@ -25,15 +25,16 @@ if [[ ${1:-} == --uninstall ]]; then
   shift
 fi
 CB_NAME=${1:-}
-CB_CONFIG_DIR=${XDG_CONFIG_HOME:-$HOME/.config}/$CB_NAME
-source "$CB_ROOT/lib/core.sh"
-
+# Checked before sourcing lib/core.sh, which would replace an empty name with a default.
 if [[ -z $CB_NAME || $CB_NAME == -h || $CB_NAME == --help ]]; then
   printf '%s\n' 'Usage:' \
     '  ./init.sh <name>               install the root command <name> (e.g. ./init.sh mu)' \
     '  ./init.sh --uninstall <name>   uninstall it'
   [[ -n $CB_NAME ]] && exit 0 || exit 2
 fi
+CB_CONFIG_DIR=${XDG_CONFIG_HOME:-$HOME/.config}/$CB_NAME
+source "$CB_ROOT/lib/core.sh"
+
 [[ $CB_NAME =~ ^[a-z][a-z0-9_-]*$ ]] || ui::die "invalid name '$CB_NAME' (lower case letters, digits, - and _, starting with a letter)"
 
 bin_dir=$HOME/.local/bin
@@ -87,6 +88,13 @@ uninstall_rc() {
     pending=0
     if [[ -z $line ]]; then pending=1; else out+=("$line"); fi
   done <"$real"
+  if ((skip)); then
+    # Begin marker without its end marker (edited by hand?): rewriting would drop the
+    # whole end of the file, so leave it untouched.
+    ui::warn "${rc/#$HOME/\~}: '$rc_begin' found but not '$rc_end'; file left untouched, remove the block by hand"
+    uninstall_incomplete=1
+    return 1
+  fi
   ((pending)) && out+=('')
   if ((${#out[@]})); then printf '%s\n' "${out[@]}" >"$tmp"; else : >"$tmp"; fi
   chmod --reference="$real" "$tmp" 2>/dev/null || chmod "$(stat -f %Lp "$real" 2>/dev/null || echo 644)" "$tmp"
@@ -119,13 +127,19 @@ uninstall_config() {
 
 if [[ $mode == uninstall ]]; then
   ui::title "Uninstalling '$CB_NAME'"
+  uninstall_incomplete=0
   uninstall_link
   uninstall_rc "$HOME/.bashrc"
   uninstall_rc "$zshrc"
   uninstall_config
   echo
-  ui::success "'$CB_NAME' is uninstalled. Open a new terminal for it to take effect."
+  if ((uninstall_incomplete)); then
+    ui::warn "'$CB_NAME' is uninstalled, except the rc file block(s) reported above."
+  else
+    ui::success "'$CB_NAME' is uninstalled. Open a new terminal for it to take effect."
+  fi
   ui::info "The $CB_ROOT directory (and your plugins) is untouched: delete it by hand if you want."
+  ((uninstall_incomplete)) && exit 1
   exit 0
 fi
 

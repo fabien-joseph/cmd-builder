@@ -131,7 +131,7 @@ fi
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 mkdir -p "$TMP/app" "$TMP/home/bin"
-cp -R "$ROOT"/{main.sh,lib,builtin,core,templates} "$TMP/app/"
+cp -R "$ROOT"/{main.sh,init.sh,lib,builtin,core,templates} "$TMP/app/"
 mkdir -p "$TMP/app/plugins"
 ln -s "$TMP/app/main.sh" "$TMP/home/bin/tt"
 export HOME=$TMP/home XDG_CONFIG_HOME=$TMP/home/.config PATH=$TMP/home/bin:$PATH NO_COLOR=1
@@ -252,6 +252,90 @@ check "bash: 'core:sy' completed despite the ':'" \
   "bash -c 'source <(tt self completion bash); COMP_LINE=\"tt self plugins disable core:sy\"; COMP_POINT=\${#COMP_LINE}; COMP_WORDBREAKS=\$\" \\t\\n\\\"\\x27><=;|&(:\"; _cb_complete_tt; printf \"[%s]\" \"\${COMPREPLY[@]}\"'" \
   "[system]"
 rm -rf "$P/sysx"
+
+# Bash adapter run as in an interactive shell: bashcomp "<shopt options>" "<command line>"
+cat >"$TMP/bashcomp.sh" <<'X'
+[[ -n $1 ]] && shopt -s $1
+source <(tt self completion bash)
+COMP_LINE=$2 COMP_POINT=${#2}
+COMP_WORDBREAKS=$' \t\n"\'><=;|&(:'
+_cb_complete_tt
+printf '[%s]' "${COMPREPLY[@]}"
+X
+bashcomp() { bash "$TMP/bashcomp.sh" "$@"; }
+
+# Completion: glob characters in candidates (nullglob / failglob)
+mkdir -p "$P/globby/restore" && echo 'about "Glob"' >"$P/globby/flags.sh"
+echo 'about "Restore a database [experimental]?"' >"$P/globby/restore/flags.sh"
+echo 'echo' >"$P/globby/restore/cmd.sh"
+check "bash: candidates kept under nullglob" "bashcomp nullglob 'tt globby '" "[restore]"
+check "bash: candidates kept under failglob" "bashcomp failglob 'tt globby '" "[restore]"
+rm -rf "$P/globby"
+
+# Completion: attached value --flag=<TAB>
+check "flag=value completion"              "tt __complete -- demo greet --lang="  "--lang=en"
+check "flag=value: prefix filtering"       "tt __complete -- demo greet --lang=f | wc -l" "1"
+check "flag=value: bool flag has no value" "tt __complete -- demo greet --loud= | wc -l" "0"
+check "bash: flag=value completed"         "bashcomp '' 'tt demo greet --lang=e'" "[en]"
+
+# Completion: a negative number is a positional, as for the parser
+mkdir -p "$P/neg"
+printf '%s\n' 'arg count "Count"' 'arg unit "Unit" --choices "kb mb"' >"$P/neg/flags.sh"
+echo 'echo "count=$ARG_COUNT unit=$ARG_UNIT"' >"$P/neg/cmd.sh"
+check "parser: negative number positional" "tt neg -5 kb"                  "count=-5 unit=kb"
+check "completion: after a negative number" "tt __complete -- neg -5 ''"   "kb"
+rm -rf "$P/neg"
+
+# doctor: the status of the last command of flags.sh does not matter
+mkdir -p "$P/cond"
+printf '%s\n' 'about "Conditional"' 'false && flag podman bool "Use podman"' >"$P/cond/flags.sh"
+echo 'echo cond' >"$P/cond/cmd.sh"
+check "doctor: flags.sh ending with a false test is valid" \
+  "tt self doctor 2>&1 | grep -c 'cond.*flags.sh'" "0"
+rm -rf "$P/cond"
+
+# self new: a refused run writes nothing
+mkdir -p "$P/bk" && echo 'echo bk' >"$P/bk/cmd.sh"
+check "self new: refused on an existing cmd.sh" "tt self new bk"          "already has an executable"
+check "self new: refused run wrote no flags.sh" "test -e '$P/bk/flags.sh'; echo \$?" "1"
+check "self new: under an existing command"   "tt self new bk db"         "created"
+check "self new: existing parent left as is"  "test -e '$P/bk/flags.sh'; echo \$?" "1"
+rm -rf "$P/bk"
+
+# Config kept as a symlink (dotfiles)
+cfg=$XDG_CONFIG_HOME/tt/config
+mv "$cfg" "$TMP/dotconfig" && ln -s "$TMP/dotconfig" "$cfg"
+tt self plugins disable core:system >/dev/null 2>&1
+check "config symlink: still a symlink"       "test -L '$cfg'; echo \$?"  "0"
+check "config symlink: target updated"        "cat '$TMP/dotconfig'"      "disable core:system"
+tt self plugins enable core:system >/dev/null 2>&1
+rm -f "$cfg" && mv "$TMP/dotconfig" "$cfg"
+
+# Bash version guard (the framework needs Bash >= 4.2)
+check "main.sh refuses Bash 4.1"  "bash -c 'BASH_VERSION=4.1.17; source \"\$0\"' '$TMP/app/main.sh'" "requires Bash >= 4.2"
+check "init.sh refuses Bash 4.1"  "bash -c 'BASH_VERSION=4.1.17; source \"\$0\"' '$TMP/app/init.sh'" "requires Bash >= 4.2"
+
+# init.sh without a name: usage, nothing touched
+mkdir -p "$XDG_CONFIG_HOME" && echo keep >"$XDG_CONFIG_HOME/completion.bash"
+check "init.sh without name: usage"           "bash '$TMP/app/init.sh'"   "Usage:"
+check "init.sh without name: exit 2"          "status \"bash '$TMP/app/init.sh'\"" "2"
+check "init.sh --uninstall without name: usage" "bash '$TMP/app/init.sh' --uninstall" "Usage:"
+check "init.sh without name: nothing touched" \
+  "cat '$XDG_CONFIG_HOME/completion.bash'; test -e '$HOME/.local/bin/cmd-builder' || echo no-link" $'keep\nno-link'
+rm -f "$XDG_CONFIG_HOME/completion.bash"
+
+# init.sh --uninstall: rc block without its end marker is left untouched
+printf '%s\n' 'alias a=1' '' '# >>> cmd-builder: zz >>>' 'export X=1' 'alias b=2' >"$HOME/.bashrc"
+check "uninstall: missing end marker reported" "bash '$TMP/app/init.sh' --uninstall zz" "file left untouched"
+check "uninstall: rc file kept intact"         "cat '$HOME/.bashrc'"      "alias b=2"
+check "uninstall: incomplete = exit 1"         "status \"bash '$TMP/app/init.sh' --uninstall zz\"" "1"
+printf '%s\n' 'alias a=1' '' '# >>> cmd-builder: zz >>>' 'export X=1' '# <<< cmd-builder: zz <<<' 'alias b=2' >"$HOME/.bashrc"
+check "uninstall: complete block removed"      "bash '$TMP/app/init.sh' --uninstall zz >/dev/null 2>&1; cat '$HOME/.bashrc'" $'alias a=1\nalias b=2'
+rm -f "$HOME/.bashrc"
+
+# Repository language: no French left in code comments
+check "code comments are in English" \
+  "grep -rnE '^[[:space:]]*#.*( : |[àâçéèêëîïôûùüÿœ])' '$ROOT'/{lib,builtin,core,templates,main.sh,init.sh} | wc -l" "0"
 
 # Doc consistency
 doc_checks

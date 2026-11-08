@@ -69,5 +69,7 @@ cb::config_set_disabled() {
     out+=("$line")
   done <"$f"
   ((on)) && out+=("disable $id")
+  # If the config is a symlink (dotfiles), rewrite its target instead of replacing the link.
+  f=$(cb::realpath "$f") || f=$CB_CONFIG_DIR/config
   printf '%s\n' "${out[@]}" >"$f.tmp" && mv "$f.tmp" "$f"
 }
