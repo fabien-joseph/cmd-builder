@@ -71,6 +71,9 @@ All framework globals are prefixed `_CB_` (never use that prefix in plugins).
 Spec state is **reset by `cb::spec_reset`** each time a `flags.sh` is loaded; only one spec
 is loaded at a time in the main process. To read another command's spec without clobbering
 the current one, use a subshell (that is what `cb::about_of` does).
+Associative arrays are declared once at the top level of their `lib/` file and only reset in
+functions (`name=()`): Bash 4.2 ignores `declare -g` for an assignment inside a function
+(see `docs/conventions.md`, decision 0011).
 
 | Variable(s) | Filled by | Content |
 |---|---|---|
