@@ -34,20 +34,16 @@ if [[ -z $CB_NAME || $CB_NAME == -h || $CB_NAME == --help ]]; then
 fi
 CB_CONFIG_DIR=${XDG_CONFIG_HOME:-$HOME/.config}/$CB_NAME
 source "$CB_ROOT/lib/core.sh"
+source "$CB_ROOT/lib/install.sh"
 
-[[ $CB_NAME =~ ^[a-z][a-z0-9_-]*$ ]] || ui::die "invalid name '$CB_NAME' (lower case letters, digits, - and _, starting with a letter)"
+cb::valid_root_name "$CB_NAME" || ui::die "invalid name '$CB_NAME' (lower case letters, digits, - and _, starting with a letter)"
 
-bin_dir=$HOME/.local/bin
+bin_dir=$_CB_BIN_DIR
 link=$bin_dir/$CB_NAME
 target=$CB_ROOT/main.sh
-rc_begin="# >>> cmd-builder: $CB_NAME >>>"
-rc_end="# <<< cmd-builder: $CB_NAME <<<"
+rc_begin=$(cb::rc_begin "$CB_NAME")
+rc_end=$(cb::rc_end "$CB_NAME")
 zshrc=${ZDOTDIR:-$HOME}/.zshrc
-
-# Path for display, with $HOME shown as ~. Not "${p/#$HOME/\~}": Bash 4.2 keeps the backslash.
-tilde() {
-  if [[ $1 == "$HOME" || $1 == "$HOME"/* ]]; then printf '~%s' "${1#"$HOME"}"; else printf '%s' "$1"; fi
-}
 
 # ---------------------------------------------------------------------------
 # Uninstall. Each step is independent and first checks whether it was already
@@ -55,85 +51,48 @@ tilde() {
 # the job.
 # ---------------------------------------------------------------------------
 
-# Step 1: the ~/.local/bin/<name> link, only if it points to this cmd-builder.
-uninstall_link() {
-  if [[ ! -e $link && ! -L $link ]]; then
-    ui::info "link $link: already removed"
-  elif [[ -L $link && ($(readlink -- "$link") == "$target" || $(cb::realpath "$link" 2>/dev/null) == "$target") ]]; then
-    rm -f -- "$link" && ui::success "link $link removed"
-  else
-    ui::warn "$link is not a link to this cmd-builder: left in place"
-  fi
-}
-
-# Step 2: the block added to an rc file. Atomic rewrite (temp file + mv):
-# an interruption leaves either the old file or the new one.
+# Step 2: the block added to an rc file (step 1, the link, is cb::link_remove).
 uninstall_rc() {
-  local rc=$1 real tmp line skip=0 pending=0
-  local -a out=()
-  [[ -e $rc ]] || return 0
-  real=$(cb::realpath "$rc") || real=$rc # if the rc is a symlink (dotfiles), edit its target
-  tmp=$real.cb-uninstall.tmp
-  rm -f -- "$tmp" # possible leftover of a previous interruption
-  if ! grep -qF "$rc_begin" "$real"; then
-    ui::info "$(tilde "$rc"): already cleaned"
-    return 0
-  fi
-  while IFS= read -r line || [[ -n $line ]]; do
-    if ((skip)); then
-      [[ $line == "$rc_end" ]] && skip=0
-      continue
-    fi
-    if [[ $line == "$rc_begin" ]]; then
-      skip=1
-      ((pending)) && pending=0 # also drop the blank line added before the block
-      continue
-    fi
-    ((pending)) && out+=('')
-    pending=0
-    if [[ -z $line ]]; then pending=1; else out+=("$line"); fi
-  done <"$real"
-  if ((skip)); then
-    # Begin marker without its end marker (edited by hand?): rewriting would drop the
-    # whole end of the file, so leave it untouched.
-    ui::warn "$(tilde "$rc"): '$rc_begin' found but not '$rc_end'; file left untouched, remove the block by hand"
-    uninstall_incomplete=1
-    return 1
-  fi
-  ((pending)) && out+=('')
-  if ((${#out[@]})); then printf '%s\n' "${out[@]}" >"$tmp"; else : >"$tmp"; fi
-  chmod --reference="$real" "$tmp" 2>/dev/null || chmod "$(stat -f %Lp "$real" 2>/dev/null || echo 644)" "$tmp"
-  mv -f -- "$tmp" "$real" && ui::success "'$CB_NAME' block removed from $(tilde "$rc")"
+  local rc=$1 rc_status=0
+  cb::rc_replace "$rc" "$CB_NAME" || rc_status=$?
+  case $rc_status in
+    0) ui::success "'$CB_NAME' block removed from $(cb::tilde "$rc")" ;;
+    2) [[ -e $rc ]] && ui::info "$(cb::tilde "$rc"): already cleaned" ;;
+    *)
+      ui::warn "$(cb::tilde "$rc"): '$rc_begin' found but not '$rc_end'; file left untouched, remove the block by hand"
+      uninstall_incomplete=1
+      return 1
+      ;;
+  esac
+  return 0
 }
 
 # Step 3: the files of ~/.config/<name>, one by one, then the directory if empty.
 uninstall_config() {
-  local f
   if [[ ! -d $CB_CONFIG_DIR ]]; then
     ui::info "$CB_CONFIG_DIR: already removed"
     return 0
   fi
-  for f in completion.bash completion.zsh config.tmp; do
-    [[ -e $CB_CONFIG_DIR/$f ]] && rm -f -- "$CB_CONFIG_DIR/$f" && ui::success "$CB_CONFIG_DIR/$f removed"
-  done
-  if [[ -e $CB_CONFIG_DIR/config ]]; then
+  cb::config_dir_clean "$CB_CONFIG_DIR"
+  if [[ -L $CB_CONFIG_DIR/config ]]; then
+    # Shared with another name ("self rename --keep-old") or a dotfile: only the link goes.
+    local to
+    to=$(readlink -- "$CB_CONFIG_DIR/config")
+    rm -f -- "$CB_CONFIG_DIR/config" && ui::success "link $CB_CONFIG_DIR/config removed (its target $to is kept)"
+  elif [[ -e $CB_CONFIG_DIR/config ]]; then
     if ui::confirm "Also remove your configuration ($CB_CONFIG_DIR/config)?" y; then
       rm -f -- "$CB_CONFIG_DIR/config" && ui::success "$CB_CONFIG_DIR/config removed"
     else
       ui::info "configuration kept"
     fi
   fi
-  if rmdir -- "$CB_CONFIG_DIR" 2>/dev/null; then
-    ui::success "$CB_CONFIG_DIR removed"
-  elif [[ -d $CB_CONFIG_DIR ]]; then
-    ui::info "$CB_CONFIG_DIR kept (it still contains files)"
-  fi
+  cb::config_dir_remove "$CB_CONFIG_DIR"
 }
 
 if [[ $mode == uninstall ]]; then
   ui::title "Uninstalling '$CB_NAME'"
   uninstall_incomplete=0
-  uninstall_link
+  cb::link_remove "$CB_NAME"
   uninstall_rc "$HOME/.bashrc"
   uninstall_rc "$zshrc"
   uninstall_config
@@ -174,20 +133,14 @@ ui::success "completion generated in $CB_CONFIG_DIR/"
 
 # rc file integration (PATH + completion), after confirmation.
 rc_block() {
-  local shell=$1 rc=$2 begin=$rc_begin end=$rc_end
-  local comp=$CB_CONFIG_DIR/completion.$shell
-  if [[ -f $rc ]] && grep -qF "$begin" "$rc"; then
-    ui::info "already configured in $(tilde "$rc")"
+  local shell=$1 rc=$2
+  if cb::rc_has "$rc" "$CB_NAME"; then
+    ui::info "already configured in $(cb::tilde "$rc")"
     return 0
   fi
-  ui::confirm "Enable '$CB_NAME' completion in $(tilde "$rc")?" y || return 1
-  {
-    printf '\n%s\n' "$begin"
-    printf 'case ":$PATH:" in *":%s:"*) ;; *) export PATH="%s:$PATH" ;; esac\n' "$bin_dir" "$bin_dir"
-    printf '[ -f "%s" ] && . "%s"\n' "$comp" "$comp"
-    printf '%s\n' "$end"
-  } >>"$rc"
-  ui::success "added to $(tilde "$rc")"
+  ui::confirm "Enable '$CB_NAME' completion in $(cb::tilde "$rc")?" y || return 1
+  cb::rc_append "$rc" "$shell" "$CB_NAME"
+  ui::success "added to $(cb::tilde "$rc")"
 }
 
 configured=0 bash_ok=0 zsh_ok=0
@@ -223,7 +176,7 @@ echo
 if [[ -n $reload_rc ]]; then
   # This terminal read its rc file before the install: completion is not loaded here yet.
   ui::success "All set! Open a new terminal, or run this in the current one:"
-  printf '  source %s\n' "$(tilde "$reload_rc")"
+  printf '  source %s\n' "$(cb::tilde "$reload_rc")"
   ui::info "Then try: $CB_NAME --help"
 else
   ui::success "All set! Open a new terminal, then run: $CB_NAME --help"

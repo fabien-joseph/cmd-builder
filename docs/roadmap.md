@@ -26,17 +26,15 @@ Keep this file current: move items to **Done** when shipped, add follow-ups you 
 - CI on GitHub Actions (decision 0011): Linux, macOS (Homebrew Bash), both also under a
   pseudo-terminal, Bash 4.2 tests and the Bash 4.1 guard in Docker. Its first runs fixed two
   real Bash 4.2 bugs (`declare -g` inside functions, `\~` in replacements).
+- `self rename <name> [--keep-old]` (decision 0012): moves link, config, completion and rc
+  blocks to a new root name, resumable, one confirmation; install code shared with
+  `init.sh` in `lib/install.sh`.
 
 ## Next
 
 In this order (owner's choice, 2026-11-08):
 
-- [ ] **`self rename <new-name>`**: rename the root command (`mu` → `xx`) without breaking
-      anything: link in `~/.local/bin`, `~/.config/<name>/` (config kept), completion
-      files, rc blocks. Today `./init.sh xx` installs a second, independent command (new
-      empty config) and `./init.sh --uninstall mu` removes the old one: nothing breaks, but
-      the config (`disable` / `rename` lines) is not carried over. Must be idempotent and
-      resumable (rule 4).
+- [ ] Agree with the owner on the order of the *Accepted* list below.
 
 Accepted, not scheduled yet:
 

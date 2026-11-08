@@ -412,7 +412,7 @@ rm -f "$cfg" && mv "$TMP/dotconfig" "$cfg"
 # Bash 4.2: "declare -g" run inside a function does not create the global (decision 0011).
 check "no declare -g inside functions" \
   "awk '/^[a-zA-Z_:]+\(\) *[{(]/ { f = 1 } f && /^[[:space:]]+declare -g/ { print FILENAME\":\"FNR } /^[})]/ { f = 0 }' '$ROOT'/lib/*.sh '$ROOT'/main.sh '$ROOT'/init.sh | wc -l" "0"
-# Bash 4.2 keeps the backslash of "${p/#$HOME/\~}" in double quotes: use tilde() in init.sh.
+# Bash 4.2 keeps the backslash of "${p/#$HOME/\~}" in double quotes: use cb::tilde (lib/install.sh).
 check "no \\~ in parameter replacements" \
   "grep -nE '^[[:space:]]*[^[:space:]#].*/\\\\~\\}' '$ROOT'/lib/*.sh '$ROOT'/main.sh '$ROOT'/init.sh '$ROOT'/builtin -r | wc -l" "0"
 # Bash version guard (the framework needs Bash >= 4.2)
@@ -456,6 +456,62 @@ check "prompt: no terminal = no"               "bash '$TMP/app/init.sh' --uninst
 _CB_TTY=$TMP/yes bash "$TMP/app/init.sh" --uninstall zz >/dev/null 2>&1
 check "prompt: yes removes the configuration"  "test -e '$XDG_CONFIG_HOME/zz'; echo \$?" "1"
 rm -f "$HOME/.bashrc" "$HOME/.zshrc" "$TMP/yes"
+
+# self rename: moves the link, the config and the rc blocks to the new name (decision 0012)
+echo y >"$TMP/yes"
+LB=$HOME/.local/bin CF=$XDG_CONFIG_HOME
+rn_setup() { # zz installed, bash block between two user lines, a custom config line
+  rm -rf "$LB" "$CF"/{zz,yy,ww} "$HOME/.bashrc" "$HOME/.zshrc"
+  printf '%s\n' 'alias a=1' >"$HOME/.bashrc"
+  _CB_TTY=$TMP/yes SHELL=/bin/bash bash "$TMP/app/init.sh" zz >/dev/null 2>&1
+  echo 'alias b=2' >>"$HOME/.bashrc"
+  echo 'disable core:system' >>"$CF/zz/config"
+}
+rn() { SHELL=/bin/bash "$LB/zz" self rename "$@"; }
+rn_setup
+check "rename: plan shown"                     "rn yy" "~/.bashrc: 'zz' block replaced by a 'yy' block"
+check "rename: no terminal = cancelled"        "rn yy" "rename cancelled"
+check "rename: cancelled = nothing changed"    "test -L '$LB/zz' && test ! -e '$LB/yy' && test ! -e '$CF/yy' && grep -c 'cmd-builder: zz' '$HOME/.bashrc'" "2"
+check "rename: invalid name"                   "status \"_CB_TTY='$TMP/yes' rn Bad\"" "2"
+check "rename: same name"                      "_CB_TTY='$TMP/yes' rn zz" "already named 'zz'"
+check "rename: builtin refused"                "_CB_TTY='$TMP/yes' rn cd" "shell keyword or builtin"
+ln -s /bin/true "$LB/yy"
+check "rename: foreign link refused"           "_CB_TTY='$TMP/yes' rn yy" "is not a link to this cmd-builder"
+check "rename: foreign link kept"              "readlink '$LB/yy'" "/bin/true"
+rm -f "$LB/yy"
+mkdir -p "$CF/yy" && echo other >"$CF/yy/config"
+check "rename: differing configs refused"      "_CB_TTY='$TMP/yes' rn yy" "merge the two files by hand"
+check "rename: refusal = nothing changed"      "cat '$CF/yy/config'; test -L '$LB/zz' && test ! -e '$LB/yy' && echo intact" $'other\nintact'
+rm -rf "$CF/yy"
+printf '%s\n' '# >>> cmd-builder: zz >>>' 'x=1' >"$HOME/.zshrc"
+check "rename: broken rc block refused"        "_CB_TTY='$TMP/yes' rn yy" "fix the block by hand first"
+rm -f "$HOME/.zshrc"
+check "rename: done"                           "_CB_TTY='$TMP/yes' rn yy" "the command is now 'yy'"
+check "rename: new link, old link removed"     "cb_l=\$(readlink '$LB/yy'); test ! -e '$LB/zz' && echo \"\$cb_l\"" "$TMP/app/main.sh"
+check "rename: config moved"                   "tail -n 1 '$CF/yy/config'; test -e '$CF/zz' || echo old-dir-gone" $'disable core:system\nold-dir-gone'
+check "rename: completion for the new name"    "grep -c '_cb_complete_yy' '$CF/yy/completion.bash'" "2"
+check "rename: rc block replaced in place"     "grep -v '^case\|^\[' '$HOME/.bashrc'" $'alias a=1\n\n# >>> cmd-builder: yy >>>\n# <<< cmd-builder: yy <<<\nalias b=2'
+check "rename: new block loads the new completion" "grep -c '$CF/yy/completion.bash' '$HOME/.bashrc'" "1"
+check "rename: the new name works"             "'$LB/yy' self plugins" "disabled"
+# Interrupted after the link and the config move: running it again finishes the job.
+rn_setup
+ln -s "$TMP/app/main.sh" "$LB/yy" && mkdir -p "$CF/yy" && mv "$CF/zz/config" "$CF/yy/config"
+check "rename: resumed after an interruption"  "_CB_TTY='$TMP/yes' rn yy" "link $LB/yy: already there"
+check "rename: resumed = fully renamed"        "test ! -e '$LB/zz' && test ! -e '$CF/zz' && grep -c 'cmd-builder: yy' '$HOME/.bashrc'; tail -n 1 '$CF/yy/config'" $'2\ndisable core:system'
+# --keep-old: both names, one config
+rn_setup
+check "rename --keep-old: done"                "_CB_TTY='$TMP/yes' rn ww --keep-old" "('zz' still works)"
+check "rename --keep-old: both links"          "test -L '$LB/zz' && test -L '$LB/ww' && echo both" "both"
+check "rename --keep-old: old config is a link" "readlink '$CF/zz/config'" "$CF/ww/config"
+check "rename --keep-old: both rc blocks"      "grep -c '^# >>> cmd-builder: ' '$HOME/.bashrc'" "2"
+"$LB/zz" self plugins enable core:system >/dev/null 2>&1
+check "rename --keep-old: one shared config"   "grep -c '^disable core:system' '$CF/ww/config'; test -L '$CF/zz/config' && echo link" $'0\nlink'
+check "rename --keep-old: run again = no change" "_CB_TTY='$TMP/yes' rn ww --keep-old >/dev/null 2>&1; grep -c '^# >>> cmd-builder: ' '$HOME/.bashrc'" "2"
+check "uninstall: shared config link removed, target kept" \
+  "bash '$TMP/app/init.sh' --uninstall zz >/dev/null 2>&1; test ! -e '$CF/zz' && test -f '$CF/ww/config' && grep -c 'cmd-builder: zz' '$HOME/.bashrc'" "0"
+_CB_TTY=$TMP/yes bash "$TMP/app/init.sh" --uninstall ww >/dev/null 2>&1
+_CB_TTY=$TMP/yes bash "$TMP/app/init.sh" --uninstall yy >/dev/null 2>&1
+rm -rf "$LB" "$CF"/{zz,yy,ww} "$HOME/.bashrc" "$HOME/.zshrc" "$TMP/yes"
 
 # Repository language: no French left in code comments
 check "code comments are in English" \
