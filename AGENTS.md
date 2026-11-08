@@ -125,8 +125,10 @@ lost**: the next agent (any tool, any model) must be able to continue from the f
    `Last wrap-up commit` (= current `HEAD`), what this session did, current state including
    uncommitted work, next steps, open questions for the owner.
 4. **Run `./tests/run.sh`**: it must pass (doc checks included).
-5. **Report to the owner in French**: which files were updated and why, then *propose* a
-   commit (`docs: session wrap-up`). Do not commit without their approval.
+5. **Commit and open a pull request** on a `docs/wrap-up-*` branch (`docs: session
+   wrap-up`), wait for a green CI, then **report to the owner in French**: which files were
+   updated and why, and the PR link. The owner reviews and merges (see the git workflow in
+   `docs/handoff.md`).
 
 Tool-specific memories (if your tool has any) are not a substitute: everything that matters
 must be in these files.
