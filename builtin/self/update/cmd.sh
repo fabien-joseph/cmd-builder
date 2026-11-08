@@ -71,3 +71,12 @@ elif [[ $FLAG_CHECK == 1 ]]; then
 else
   ui::success "$updated/$available repository(ies) updated."
 fi
+
+# Tools needed by user plugins are updated separately (sudo, package managers).
+source "$CB_ROOT/lib/deps.sh"
+cb::config_load
+cb::plugins_load
+cb::deps_collect
+if ((${#_CB_DEP_TOOLS[@]})); then
+  ui::info "Tools needed by your plugins (${_CB_DEP_TOOLS[*]}): update them with '$CB_NAME self deps update'"
+fi

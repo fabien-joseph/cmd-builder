@@ -1,4 +1,5 @@
 source "$CB_ROOT/lib/core.sh"
+source "$CB_ROOT/lib/deps.sh"
 cb::config_load
 cb::plugins_load
 
@@ -76,6 +77,23 @@ active=0
 for id in "${_CB_IDS[@]}"; do [[ ${_CB_ID_STATE[$id]} == active || ${_CB_ID_STATE[$id]} == extends:* ]] && ((active++)); done
 ok "${#_CB_IDS[@]} plugin(s) found, $active active"
 for c in "${_CB_CONFLICTS[@]}"; do wa "$c"; done
+
+echo
+ui::title "Dependencies"
+cb::deps_collect
+if ((${#_CB_DEP_TOOLS[@]} == 0)); then
+  ok "no extra tool needed"
+else
+  dep_missing=0
+  for tool in "${_CB_DEP_TOOLS[@]}"; do
+    cb::dep_ok "$tool" && continue
+    [[ -n ${_CB_DEP_REQ[$tool]:-} ]] || continue
+    wa "$tool missing, needed by ${_CB_DEP_USERS[$tool]} (run '$CB_NAME self deps install')"
+    ((dep_missing++))
+  done
+  ((dep_missing)) || ok "${#_CB_DEP_TOOLS[@]} tool(s) declared, the required ones are installed"
+  ((${#_CB_PMS[@]})) || wa "no package manager configured ('$CB_NAME self deps managers add <manager>')"
+fi
 
 echo
 ui::title "Commands"

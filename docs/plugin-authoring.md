@@ -59,6 +59,7 @@ description "Longer text shown in --help"
 flag <name> [-x] <bool|string|int> "description" [options]
 arg  <name> "description" [options]
 example "<command line without the root name>" ["explanation"]
+requires <tool> [--optional] [--apt|--dnf|--pacman|--zypper|--apk|--brew <package|->]
 ```
 
 ### Required and optional fields
@@ -74,6 +75,7 @@ checked.
 | `flag` | name, type, description | short form `-x` (between name and type), options |
 | `arg` | name, description | options |
 | `example` | command line, without the root name | explanation |
+| `requires` | the command name of the tool | `--optional`, package names |
 
 - Options of `flag` and `arg` come **after the description**, in any order.
 - A description may be empty (`""`), but it cannot be left out: `flag verbose bool` is an
@@ -195,6 +197,32 @@ arg host "Server" --choices-from '"$CB_COMMAND_DIR/_hosts.sh"'
 
 Without `--strict`, values are suggestions only (any value is accepted). `--choices` and
 `--choices-from` are mutually exclusive. Keep the snippet fast: there is no timeout.
+
+### `requires`: tools the command needs
+
+Only for **user plugins**: official plugins (`core/`) and `self` never need anything beyond
+Bash and POSIX tools. Declare each extra tool (by the name of its command) on its own line:
+
+```bash
+requires fzf                               # package "fzf" with every package manager
+requires fd --apt fd-find --brew fd        # the package has another name on apt
+requires mytool --brew -                   # "-": not packaged for brew
+requires jq --optional                     # the command works without it
+```
+
+- Before running the command, the framework checks with `command -v` that every required
+  tool is installed. If one is missing, the command does not run:
+  `✖ 'mu x' needs 'fzf', not installed` / `Install: mu self deps install` (exit code 1).
+  `--help` and Tab completion still work.
+- `--optional`: not checked. The command handles its absence itself, e.g.
+  `if command -v jq >/dev/null; then … else … fi`. It is listed as optional by
+  `mu self deps` and installed by `mu self deps install --all`.
+- Package options (`--apt`, `--dnf`, `--pacman`, `--zypper`, `--apk`, `--brew`) give the
+  package name for that manager when it differs from the tool name; `-` means it is not
+  packaged there. Note that the package must provide a command with the declared name.
+- The user installs and updates the tools with `mu self deps install` / `update`, with the
+  package managers they chose (`mu self deps managers`), after one confirmation.
+- To let the user pick in a list, you do not need `fzf`: use `ui::select` (pure Bash).
 
 ### Parsing rules
 

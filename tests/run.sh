@@ -559,6 +559,13 @@ check "prompt: no terminal = no"               "bash '$TMP/app/init.sh' --uninst
 _CB_TTY=$TMP/yes bash "$TMP/app/init.sh" --uninstall zz >/dev/null 2>&1
 check "prompt: yes removes the configuration"  "test -e '$XDG_CONFIG_HOME/zz'; echo \$?" "1"
 rm -f "$HOME/.bashrc" "$HOME/.zshrc" "$TMP/yes"
+# init.sh asks once for the package manager of plugin dependencies (decision 0014)
+mkdir -p "$TMP/pmstub" && printf '#!/bin/sh\n' >"$TMP/pmstub/apt-get" && chmod +x "$TMP/pmstub/apt-get"
+check "install: package manager asked"         "PATH='$TMP/pmstub':\$PATH bash '$TMP/app/init.sh' zz" "Package manager for the tools your plugins need (detected: "
+check "install: package manager saved"         "grep -c '^package-manager ' '$XDG_CONFIG_HOME/zz/config'" "1"
+check "install: package manager asked once"    "PATH='$TMP/pmstub':\$PATH bash '$TMP/app/init.sh' zz | grep -c 'Package manager for'" "0"
+echo y >"$TMP/yes" && _CB_TTY=$TMP/yes bash "$TMP/app/init.sh" --uninstall zz >/dev/null 2>&1
+rm -rf "$TMP/pmstub" "$TMP/yes" "$HOME/.bashrc" "$HOME/.zshrc"
 
 # self rename: moves the link, the config and the rc blocks to the new name (decision 0012)
 echo y >"$TMP/yes"
@@ -638,6 +645,78 @@ printf '\n' >"$TMP/keys"
 check "select: Enter keeps the default"        "_CB_TTY='$TMP/keys' bash -c 'source \"\$0\"; ui::select Q -d c a b c' '$TMP/app/lib/ui.sh' 2>/dev/null" "c"
 check "select: list shown without a terminal"  "tt pick a b" "  2) b"
 rm -rf "$P/pick" "$TMP/keys"
+
+# Dependencies: "requires" + self deps (decision 0014). Fake apt-get / sudo log their calls;
+# the fake apt-get "installs" a package by creating a command with its name.
+S=$TMP/stubs LOG=$TMP/pm.log
+mkdir -p "$S"
+printf '#!/bin/sh\necho "apt-get $*" >>"%s"\n[ "$1" = install ] || exit 0\nfor p; do case $p in -*|install) ;; *) printf "#!/bin/sh\\n" >"%s/$p"; chmod +x "%s/$p" ;; esac; done\n' "$LOG" "$S" "$S" >"$S/apt-get"
+printf '#!/bin/sh\n"$@"\n' >"$S/sudo"
+chmod +x "$S/apt-get" "$S/sudo"
+sp() { PATH=$S:$PATH "$@"; }
+mkdir -p "$P/dep"
+printf '%s\n' 'about "Deps"' 'requires cbx --apt cbx-pkg' 'requires cby' 'requires cbz --optional' 'requires cbw --optional --apt -' >"$P/dep/flags.sh"
+echo 'command -v cbz >/dev/null && echo "with cbz" || echo "without cbz"' >"$P/dep/cmd.sh"
+check "deps: missing required = stops"         "sp tt dep" "'tt dep' needs 'cbx', 'cby', not installed"
+check "deps: stop hint"                        "sp tt dep" "Install: tt self deps install"
+check "deps: stop = exit 1"                    "status 'sp tt dep'" "1"
+check "deps: --help works anyway"              "sp tt dep --help" "tt dep — Deps"
+check "deps: completion works anyway"          "sp tt __complete -- dep --" "--help"
+check "deps: list states"                      "sp tt self deps" "cbx            missing              -"
+check "deps: list optional"                    "sp tt self deps" "cbz            missing (optional)"
+check "deps: list users"                       "sp tt self deps" "tt dep"
+check "deps: list summary"                     "sp tt self deps" "2 required tool(s) missing"
+check "deps: doctor warns"                     "sp tt self doctor" "cbx missing, needed by tt dep"
+check "deps: doctor, no manager"               "sp tt self doctor" "no package manager configured"
+check "deps: install without terminal = cancelled" "sp tt self deps install" "cancelled"
+check "deps: cancelled = nothing run"          "test -e '$LOG' || echo nothing" "nothing"
+tt self deps managers remove "$(sed -n 's/^package-manager //p' "$XDG_CONFIG_HOME/tt/config" | head -n 1)" >/dev/null 2>&1
+grep -v '^package-manager' "$XDG_CONFIG_HOME/tt/config" >"$TMP/cfg" && mv "$TMP/cfg" "$XDG_CONFIG_HOME/tt/config"
+check "deps: managers add"                     "tt self deps managers add apt" "package managers: apt"
+check "deps: managers add twice"               "tt self deps managers add apt" "apt is already configured"
+check "deps: managers add, unsupported"        "tt self deps managers add snap" "invalid value 'snap'"
+check "deps: managers remove completion"       "tt __complete -- self deps managers remove ''" "apt"
+check "deps: managers detected"                "sp tt self deps managers" "detected on this machine: "
+check "deps: package of the manager"           "sp tt self deps" "cbx            missing              apt: cbx-pkg"
+check "deps: not packaged for the manager"     "sp tt self deps" "cbw            missing (optional)   -"
+echo y >"$TMP/yes"
+check "deps: install plan"                     "_CB_TTY='$TMP/yes' sp tt self deps install" "apt-get install cbx-pkg cby"
+check "deps: install ran the manager"          "cat '$LOG'" $'apt-get update\napt-get install cbx-pkg cby'
+check "deps: installed tool detected"          "test -x '$S/cby' && echo ok" "ok"
+check "deps: other command name reported"      "_CB_TTY='$TMP/yes' sp tt self deps install" "cbx still not found"
+printf '#!/bin/sh\n' >"$S/cbx" && chmod +x "$S/cbx"
+check "deps: all required = runs"              "sp tt dep" "without cbz"
+check "deps: nothing to install"               "sp tt self deps install" "Nothing to install."
+: >"$LOG"
+check "deps: --all, optional too"              "_CB_TTY='$TMP/yes' sp tt self deps install --all" "'cbw' is not packaged for apt: install it by hand"
+check "deps: --all installed the optional one" "cat '$LOG'" "apt-get install cbz"
+check "deps: the command sees the optional one" "sp tt dep" "with cbz"
+: >"$LOG"
+check "deps: update plan"                      "_CB_TTY='$TMP/yes' sp tt self deps update" "apt-get install --only-upgrade cbx-pkg cby cbz"
+check "deps: update ran"                       "cat '$LOG'" "apt-get install --only-upgrade cbx-pkg cby cbz"
+check "deps: self update reminder"             "sp tt self update" "update them with 'tt self deps update'"
+check "deps: all installed, doctor is happy"   "sp tt self doctor" "4 tool(s) declared, the required ones are installed"
+echo 'package-manager snap' >>"$XDG_CONFIG_HOME/tt/config"
+check "deps: invalid manager in config"        "tt self doctor" "expected 'package-manager <apt|dnf|pacman|zypper|apk|brew>'"
+grep -v '^package-manager' "$XDG_CONFIG_HOME/tt/config" >"$TMP/cfg" && mv "$TMP/cfg" "$XDG_CONFIG_HOME/tt/config"
+printf '%s\n' 'requires "bad name"' >"$P/dep/flags.sh"
+check "deps: invalid tool name"                "tt dep" "invalid command name 'bad name'"
+printf '%s\n' 'requires cbx --apt' >"$P/dep/flags.sh"
+check "deps: manager option without package"   "tt dep" "--apt expects a package name"
+printf '%s\n' 'requires cbx' 'requires cbx' >"$P/dep/flags.sh"
+check "deps: required twice"                   "tt dep" "'cbx' is required twice"
+rm -rf "$P/dep" "$S" "$LOG" "$TMP/yes"
+# Commands of each manager: sudo when not root, never for brew, full upgrade on Arch.
+pmc() { bash -c 'source "$0/lib/core.sh"; source "$0/lib/deps.sh"; cb::pm_commands "$@"' "$TMP/app" "$@"; }
+check "deps: dnf install"                      "pmc dnf install a b" "dnf install a b"
+check "deps: brew never uses sudo"             "pmc brew install a | grep -c sudo" "0"
+check "deps: pacman update = full upgrade"     "pmc pacman update a" "pacman -Syu"
+check "deps: apk update"                       "pmc apk update a" "apk add --upgrade a"
+check "deps: zypper update"                    "pmc zypper update a" "zypper update a"
+check "deps: package names quoted"             "pmc apt install 'a;b'" "apt-get install a\;b"
+# Official plugins and built-in commands need no extra tool (rule 1).
+check "deps: no requires in core/ and builtin/" \
+  "grep -rnE '^[[:space:]]*requires[[:space:]]' '$ROOT'/core '$ROOT'/builtin | wc -l" "0"
 
 # Repository language: no French left in code comments
 check "code comments are in English" \

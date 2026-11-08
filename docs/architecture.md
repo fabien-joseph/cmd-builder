@@ -73,6 +73,7 @@ Plugin states: `active`, `disabled`, `reserved`, `shadowed:<id>`; for extensions
 | `lib/router.sh` | `cb::main` (entry), `cb::run` (spec → parse → exec), unknown-command errors |
 | `lib/complete.sh` | Shell-agnostic completion engine (`cb::complete`) and completion script generation |
 | `lib/install.sh` | Install helpers shared by `init.sh` and `self rename`: rc block markers, `cb::rc_block` / `cb::rc_append` / `cb::rc_replace` (atomic rewrite), `cb::link_is_ours` / `cb::link_remove`, config-dir cleanup, `cb::tilde`, `_CB_BIN_DIR`. Not loaded by `lib/core.sh` |
+| `lib/deps.sh` | Plugin dependencies (decision 0014): `cb::pm_detect`, `cb::pm_ask` (`ui::select`, saved in the config), `cb::pm_for` / `cb::pm_package` / `cb::pm_commands` (install/update command lines per manager, `sudo` unless root, never for brew), `cb::deps_collect` (the `requires` of every active command into `_CB_DEP_*`). Not loaded by `lib/core.sh` |
 | `lib/run.sh` | Tiny launcher: loads `ui.sh`, then sources the target `cmd.sh` with the remaining args |
 
 ## Global state
@@ -95,6 +96,9 @@ functions (`name=()`): Bash 4.2 ignores `declare -g` for an assignment inside a 
 | `_CB_FLAGS` + `_CB_F_*` (assoc. by flag name) | `flag` | `TYPE`, `SHORT`, `DESC`, `DEFAULT`, `REQ`, `CHOICES`, `CHFROM`, `STRICT`; `_CB_F_BYSHORT` maps short → name |
 | `_CB_ARGS` + `_CB_A_*` (assoc. by arg name) | `arg` | `DESC`, `OPT`, `VAR`, `CHOICES`, `CHFROM`, `STRICT` |
 | `_CB_VAL`, `_CB_AVAL`, `_CB_POS` | `cb::parse` | parsed flag values, arg values, positionals |
+| `_CB_REQS` + `_CB_R_OPT`, `_CB_R_PKG` | `requires` | required tools; optional flag; `<manager>/<tool>` → package |
+| `_CB_PMS`, `_CB_PM_ALL` | `cb::config_load` | configured package managers; supported ones |
+| `_CB_DEP_TOOLS`, `_CB_DEP_REQ`, `_CB_DEP_USERS`, `_CB_DEP_PKG` | `cb::deps_collect` | tools of every active command |
 | `_CB_NO_DYNAMIC` | `self doctor` | when set, `cb::choice_ok` does not validate `--choices-from --strict` values |
 
 ## Exit codes
@@ -102,7 +106,7 @@ functions (`name=()`): Bash 4.2 ignores `declare -g` for an assignment inside a 
 | Code | Meaning | Where |
 |---|---|---|
 | 0 | success, or help displayed | everywhere |
-| 1 | generic failure (`ui::die` default) | commands, `self doctor` with errors, `init.sh --uninstall` that left an rc block in place, `self rename` refused, cancelled or incomplete |
+| 1 | generic failure (`ui::die` default) | commands, `self doctor` with errors, `init.sh --uninstall` that left an rc block in place, `self rename` refused, cancelled or incomplete, a command whose required tool is missing (`cb::_check_requires`, after parsing), `self deps install` that left a tool missing |
 | 2 | usage error: unknown command/option, invalid or missing value | `lib/parse.sh`, `lib/router.sh`, `init.sh` without a name |
 | 3 | invalid `flags.sh` (DSL error, reported as `file:line : message`) | `cb::_spec_err` |
 
@@ -137,6 +141,7 @@ in scope; stderr is discarded.
 ```
 disable <core|user>:<plugin>
 rename  <core|user>:<plugin> <new-name>
+package-manager <apt|dnf|pacman|zypper|apk|brew>   # repeatable, order of preference (`_CB_PMS`)
 ```
 
 Invalid lines do not stop the program; they are collected in `_CB_CONFIG_ERRORS` and
@@ -156,6 +161,7 @@ best examples of the framework in use. They source `lib/core.sh` to access inter
 | `self plugins` | list plugins with id and state |
 | `self plugins enable` / `self plugins disable` | toggle a plugin in the config (name or id, dynamic completion) |
 | `self rename` | rename the root command: plan + one confirmation, then new link, config moved, completion regenerated, rc blocks replaced in place, old config dir and old link last; resumable; `--keep-old` keeps the old name with its config as a symlink (decision 0012) |
+| `self deps` | list the `requires` of every active command (state, package, users); `self deps install [--all]` / `self deps update`: commands per manager shown, one confirmation, then run (`_common.sh`); `self deps managers` lists configured / detected, `self deps managers add` / `self deps managers remove` rewrite the `package-manager` lines |
 | `self doctor` | check environment, link, completion files, config, conflicts, every `flags.sh`, and every `example` (routed from the root like `cb::main`, the plugin also accepted under its directory name, then `cb::parse` in a subshell with `_CB_NO_DYNAMIC=1`; warnings) |
 | `self completion` | print the bash or zsh completion script |
 | `self guide` | print `templates/ai-guide.md` filled in: root name, paths, system, Bash version, existing commands (unless `--no-commands`), help of `self new`, and the part of `docs/plugin-authoring.md` between `<!-- guide:begin -->` and `<!-- guide:end -->` (decision 0010); an optional request (variadic arg) is appended as a final "The user's request" section, quoted with `> `; `-o` writes a file, confirm before overwriting |
