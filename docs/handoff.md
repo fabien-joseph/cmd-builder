@@ -4,80 +4,98 @@ Snapshot of the project state for the next agent (any tool, no prior context).
 **Rewritten at every wrap-up** ("Fais le point", see `AGENTS.md`) — not a log.
 
 - Date: 2026-11-08
-- Last wrap-up commit: `b9ccfcc` (merge of PR #6 `feat/ci` into `main`)
+- Last wrap-up commit: `284d249` (merge of PR #13 `fix/ui-symbols` into `main`)
 
 ## What the last session did
 
-1. **Roadmap triaged with the owner** (`docs/roadmap.md`): *Next*, in this order, was CI
-   then `self rename`. Accepted but not scheduled: `self doctor` checking `example` lines,
-   user plugins extending official ones, repeatable flags, opt-in inherited flags, command
-   aliases, hidden commands, `self plugins install <git-url>` (big "not official" warning +
-   confirmation), optional `self guide [request]`, zsh completion test, `--choices-from`
-   timeout. Kept as an idea: plugins in other languages. Rejected: translating the guide.
-2. **CI on GitHub Actions** (PR #6, decision 0011, `.github/workflows/tests.yml`): Linux and
-   macOS (Homebrew Bash), both also under a pseudo-terminal; `tests/run.sh` on a real Bash
-   4.2 and the Bash 4.1 guard in the official `bash:*` Docker images. All green.
-3. **Two real Bash 4.2 bugs found by the CI and fixed** (the project claimed 4.2 support but
-   had never run on it):
-   - `declare -gA name=()` inside a function does not set the global in 4.2, so commands got
-     empty `FLAG_*` / `ARG_*`. Arrays now declared at the top level of `lib/spec.sh` and
-     `lib/parse.sh`.
-   - `"${rc/#$HOME/\~}"` keeps the backslash in 4.2 (`source \~/.bashrc`): `init.sh` uses a
-     `tilde` helper.
-   Both are rules in `docs/conventions.md`, each enforced by a static test (mutation-checked).
-4. macOS: the test sandbox uses the physical path of `mktemp -d` (`/var` → `/private/var`).
-5. Guide evaluations: a Claude Code user-level agent `~/.claude/agents/chat-ai-simulator.md`
-   (tools `Read, Write`, no shell) was created for the next evaluation rounds (method in
-   `docs/testing.md`). It is outside the repository, available from a new session.
-6. `gh` is now installed and logged in (`fabien-joseph`, ssh).
+Seven pull requests (#8 to #13), all merged by the owner, CI green on each:
+
+1. **`self rename <name> [--keep-old]`** (PR #8, decision 0012): moves the link, the
+   config, the completion and the rc blocks (replaced in place) to a new root name, after
+   one confirmation, resumable (old link last). `--keep-old` keeps the old name, its config
+   becoming a symlink to the new one. The install-layout code moved from `init.sh` to
+   `lib/install.sh`, shared by both.
+2. **`self doctor` checks every `example`** like the parser would (warnings), and the CI
+   moved to `actions/checkout@v5` (PR #9). **`self guide [request]`** appends the request
+   at the end of the guide, to paste everything as one message.
+3. **Extensions of official plugins** (PR #10, decision 0013): `plugins/+system/disk/` adds
+   `mu system disk` next to the official `mu system info`; `+` at every level for official
+   groups. The owner wanted the extension visible in the directory name (rejected: a root
+   without files, an `extends` keyword, a config directive, `system.extend`, `system@core`).
+   `self new system disk` creates it. All tree walks go through `cb::children` /
+   `cb::is_child` / `cb::child_dir`.
+4. **`ui::select`** (PR #11): arrow-key menu in pure Bash (the owner's previous project
+   needed `fzf` for that).
+5. **Plugin dependencies** (PR #11, decision 0014): `requires <tool> [--optional]
+   [--apt|--dnf|--pacman|--zypper|--apk|--brew <package|->]` in `flags.sh`, checked before
+   running; `self deps`, `self deps install [--all]`, `self deps update`,
+   `self deps managers [add|remove]`; `package-manager <pm>` config lines, asked once by
+   `init.sh` (suggestion = detected manager). Restrictive by the owner's choice: only the
+   configured managers, always after a confirmation. Official plugins never use `requires`
+   (test).
+6. **AI guide reviewed** against all of this (PR #12): it still advised
+   `command -v … || ui::die` and would have written extension files in the wrong place.
+   Fixed and pinned by tests.
+7. **Status symbols** (PR #13): `✔ ✖ ⚠` overlapped the next character in Windows Terminal
+   (emoji variants, two columns wide); now `✓ ✗ !`, enforced by a test.
 
 ## Current state
 
-- `main` = `b9ccfcc`; **261 tests pass** locally (also under a pseudo-terminal); CI green on
-  the three jobs (260 in the Bash 4.2 container: the commit check of the docs is skipped
-  there, most likely because git refuses the ownership of the mounted checkout).
-- Branch `docs/wrap-up-ci`: this wrap-up (docs only).
-- Merged branch `feat/ci` still exists locally and on GitHub.
-- Installed on the owner's machine as `mu` (bash, WSL2).
+- `main` = `284d249`; **442 tests pass** locally (also under a pseudo-terminal); CI green.
+- Branch `docs/wrap-up-features`: this wrap-up (docs only).
+- Merged branch `fix/ui-symbols` still exists locally and on GitHub (deleting branches
+  needs the owner's explicit go each time).
+- Installed on the owner's machine as `mu` (bash, WSL2, Windows Terminal), updated with
+  `git pull` only: that is enough (the link points to the checkout; completion files were
+  checked identical). The owner added `package-manager apt` to the config afterwards.
+- The user-level agent `~/.claude/agents/chat-ai-simulator.md` (tools `Read, Write`) is
+  available for guide evaluations (method in `docs/testing.md`). The guide has **not** been
+  evaluated with it since extensions and `requires`.
 
 ## Next steps
 
-1. **`self rename <new-name>`** (roadmap *Next*): rename the root command without losing the
-   config. Today `./init.sh xx` + `./init.sh --uninstall mu` works but the new install starts
-   with an empty `~/.config/xx/config`. To move: `~/.local/bin/<name>` link,
-   `~/.config/<name>/` (config + completion files, regenerated for the new name), the rc
-   blocks `# >>> cmd-builder: <name> >>>` in `~/.bashrc` / `~/.zshrc`. Idempotent and
-   resumable (rule 4), confirmation (rule 5), a decision record, tests with `zz`-style names
-   in the sandbox like the `init.sh` tests. Probably share code with `init.sh` rather than
-   duplicate it (to be decided with the owner).
-2. Then the *Accepted* list of the roadmap, in an order to agree with the owner.
+1. **Global review** (owner's plan): after a `/clear`, the owner starts a session (Opus,
+   max effort) asking the agent to act as a software architect leading sub-agents and to
+   review every aspect of the project (architecture, plugin contract, correctness,
+   security, idempotence, portability, performance, CLI UX, tests, CI, docs, AI guide with
+   a practical evaluation, maintainability, product). Review only: report in the
+   scratchpad + a correction plan in batches, to validate with the owner before any change.
+2. Then agree on the order of the *Accepted* list of `docs/roadmap.md` and of the review's
+   plan. Suggested earlier: repeatable flags, then opt-in inherited flags (both extend the
+   DSL), then aliases + hidden commands together.
 
 ## Open questions for the owner
 
-- Delete the merged branch `feat/ci` (and `docs/wrap-up-ci` once merged)?
-- `self rename`: a `self` command calling shared code with `init.sh`, or `./init.sh --rename
-  <old> <new>`? (Recommendation: `self rename`, since `self` already knows its own name.)
+- Delete the merged branch `fix/ui-symbols` (and `docs/wrap-up-features` once merged)?
+- "Did you mean" for a mistyped subcommand after a command that has its own `cmd.sh`
+  (`mu self deps manager`): small fix, left for the review.
 
 ## Owner preferences (learned so far)
 
 - Talks to agents in French, but the whole repository is in English (code, messages, docs).
   Commands generated for the owner's own plugins also default to English texts.
 - Wants to be asked before structural choices; likes proposals with a recommendation, and
-  short numbered questions they can answer one by one.
+  short numbered questions they can answer one by one (`AskUserQuestion` works well, with
+  previews for naming choices). Sometimes rejects all options and proposes their own idea.
 - Requires idempotent, resumable operations on the user's system, and confirmation before
-  updates (`self update` always asks).
+  updates or installs. Prefers **restrictive** designs (only what the user configured).
 - macOS: Bash ≥ 4.2 required, no effort for Bash 3.2.
 - Wants everything to stay usable by any AI tool, not only Claude, including AI chats
-  with no access to the machine (hence `self guide`).
+  with no access to the machine (hence `self guide`), and wants the guide kept exact after
+  every feature.
 - Cares about docs never drifting from the code: prefers generated content and tests that
   execute the examples over hand-maintained copies.
 - Likes empirical checks: test with weak models, run their output for real, report
   honestly what failed. Sub-agents playing an external AI must never access local services
   (databases...): only the evaluator does.
-- **Git workflow** (updated this session): work on a feature branch; the **agent commits,
-  pushes and opens the pull request** with `gh`; **the owner reviews and merges**. Wait for
-  a green CI before saying a PR is ready. `gh pr edit` fails with gh 2.46 ("Projects
-  (classic) is being deprecated"): update a PR body with
+- Things should be readable in the tree itself (the `+` of extensions).
+- Uses Windows Terminal on WSL2: avoid characters with an emoji variant in output.
+- **Git workflow**: work on a feature branch; the **agent commits, pushes and opens the
+  pull request** with `gh`; **the owner reviews and merges**. Wait for a green CI before
+  saying a PR is ready (`gh run watch <id> --exit-status`). Several features may share one
+  PR (one commit each). `gh pr edit` fails with gh 2.46 ("Projects (classic) is being
+  deprecated"): update a PR body with
   `gh api -X PATCH repos/fabien-joseph/cmd-builder/pulls/<n> -F body=@<file>`.
+  Delete merged branches only when the owner explicitly says so.
 - Pastes several commands at once in the terminal: avoid commands that open a pager or wait
   for input in suggested blocks (`git --no-pager diff`), or tell them to run step by step.

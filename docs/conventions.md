@@ -29,6 +29,13 @@
 - Prefer `[[ … ]]` and `(( … ))`. Use `printf`, not `echo`, for anything that may start
   with `-` or contain escapes.
 - `local` for every function variable.
+- `IFS=$'\t' read -r a b c` merges consecutive tabs (tab is an IFS whitespace character):
+  an empty field shifts the next ones. When a function prints tab-separated lines for
+  another one, never leave a field empty (print `0` / `-`), see `cb::deps_collect`.
+- `${array[*]// /|}` replaces inside each element, it does not join: join with
+  `$(IFS='|'; printf '%s' "${array[*]}")`.
+- Code that walks command trees goes through `cb::children` / `cb::is_child` /
+  `cb::child_dir` (extensions, decision 0013), and `cb::walk` prints `dir<TAB>words`.
 
 ## Naming
 
