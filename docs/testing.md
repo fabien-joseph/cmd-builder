@@ -35,9 +35,12 @@ check "<description>" "<shell command>" "<expected substring of stdout+stderr>"
 - To test absence: `check "…" "tt … | grep -c something" "0"`.
 - Create fixtures with heredocs under `$P` (the temp `plugins/`) and remove them at the end
   of your block so later tests are not affected.
-- Interactive prompts read `/dev/tty`; in tests there is none, so `ui::confirm` answers
-  "no". To test the "yes" path manually, run under a pseudo-terminal:
-  `(sleep 1; printf 'y\n') | script -qec "<command>" /dev/null`.
+- Interactive prompts (`ui::confirm`, `ui::ask`) read `/dev/tty`, which exists when the
+  suite is run from a terminal: a prompt would then wait, invisibly, for an answer. The
+  suite exports `_CB_TTY=/dev/null` (internal override of `/dev/tty`), so every prompt
+  answers "no" (or its default). To test the "yes" path, point it to a file:
+  `echo y >"$TMP/yes"; check "…" "_CB_TTY='$TMP/yes' <command>" "…"`.
+- Check a change does not hang from a terminal: `script -qec ./tests/run.sh /dev/null`.
 - To test the bash adapter as an interactive shell would run it, use
   `bashcomp "<shopt options>" "<command line>"` (prints `COMPREPLY` as `[a][b]`), e.g.
   `check "…" "bashcomp nullglob 'tt demo '" "[greet]"`.
