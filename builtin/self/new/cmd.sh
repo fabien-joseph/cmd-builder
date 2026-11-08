@@ -87,7 +87,7 @@ done
 #
 # Options: FLAG_<NAME> (bool = 0/1) · Arguments: ARG_<NAME> and "$@"
 # Variables: CB_NAME, CB_COMMAND, CB_COMMAND_DIR, CB_PLUGIN_ROOT, CB_CONFIG_DIR
-# Helpers:   ui::info ui::success ui::warn ui::error ui::die ui::confirm ui::ask ui::title
+# Helpers:   ui::info ui::success ui::warn ui::error ui::die ui::confirm ui::ask ui::select ui::title
 
 ui::info "Hello from '$CB_COMMAND'!"
 TPL

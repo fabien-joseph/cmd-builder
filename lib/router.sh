@@ -52,6 +52,21 @@ cb::_unknown_plugin() {
   exit 2
 }
 
+# Stops before running a command whose required tools are missing (decision 0014).
+cb::_check_requires() {
+  local t list
+  local -a missing=()
+  for t in "${_CB_REQS[@]}"; do
+    [[ -n ${_CB_R_OPT[$t]} ]] && continue
+    command -v "$t" >/dev/null 2>&1 || missing+=("$t")
+  done
+  ((${#missing[@]})) || return 0
+  list=$(printf "'%s', " "${missing[@]}")
+  ui::error "'$1' needs ${list%, }, not installed"
+  printf "  Install: %s self deps install\n" "$CB_NAME" >&2
+  exit 1
+}
+
 # cb::run <dir> <plugin dir> <display> args...
 cb::run() {
   local dir=$1 top=$2 display=$3 exe s
@@ -79,6 +94,7 @@ cb::run() {
   # Exported before parsing: --choices-from --strict snippets may use them.
   export CB_COMMAND=$display CB_COMMAND_DIR=$dir CB_PLUGIN_ROOT=$top
   cb::parse "$dir" "$display" "$@"
+  cb::_check_requires "$display"
   cb::export_values
   if [[ $exe == */cmd.sh ]]; then
     exec "$BASH" "$CB_ROOT/lib/run.sh" "$exe" "${_CB_POS[@]}"

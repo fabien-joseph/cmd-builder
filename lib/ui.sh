@@ -4,6 +4,7 @@
 #   ui::title "text"                                            (stdout, bold)
 #   ui::confirm "Question?" [y|n]                               (0 = yes)
 #   ui::ask "Question" [default]                                (prints the answer)
+#   ui::select "Question" [-d default] option...                (prints the chosen option)
 # Colours usable on stdout: UI_BOLD UI_DIM UI_RED UI_GREEN UI_YELLOW UI_BLUE UI_CYAN UI_RESET
 
 if [[ -z ${NO_COLOR:-} && -t 1 ]]; then
@@ -50,4 +51,72 @@ ui::ask() {
   fi
   { read -r ans <"${_CB_TTY:-/dev/tty}"; } 2>/dev/null || printf '\n' >&2
   printf '%s\n' "${ans:-$def}"
+}
+
+# Lets the user pick one option with the arrow keys (or j/k, or its number), then Enter.
+# Prints the chosen option on stdout. Esc or q cancels (status 1). Without a terminal:
+# prints the default (-d) if given, otherwise returns 1. Pure Bash, no dependency.
+ui::select() {
+  local q=$1 def= i n cur=0 key rest fd draw=0 first=1
+  shift
+  if [[ ${1:-} == -d ]]; then
+    def=${2:-}
+    shift 2
+  fi
+  local -a opts=("$@")
+  n=${#opts[@]}
+  ((n)) || return 1
+  for i in "${!opts[@]}"; do [[ ${opts[i]} == "$def" ]] && cur=$i; done
+  [[ -t 2 ]] && draw=1
+  printf '%s?%s %s\n' "$_UI_BLUE" "$_UI_RESET" "$q" >&2
+  if ! { exec {fd}<"${_CB_TTY:-/dev/tty}"; } 2>/dev/null; then
+    [[ -n $def ]] && printf '%s\n' "$def"
+    [[ -n $def ]]
+    return
+  fi
+  while :; do
+    if ((draw)); then
+      ((first)) || printf '\e[%dA' "$n" >&2
+      for i in "${!opts[@]}"; do
+        if ((i == cur)); then
+          printf '\e[2K  %s›%s %s\n' "$_UI_BLUE" "$_UI_RESET" "${opts[i]}" >&2
+        else
+          printf '\e[2K    %s\n' "${opts[i]}" >&2
+        fi
+      done
+    elif ((first)); then
+      for i in "${!opts[@]}"; do printf '  %d) %s\n' "$((i + 1))" "${opts[i]}" >&2; done
+    fi
+    first=0
+    if ! IFS= read -rsn1 key <&"$fd" 2>/dev/null; then
+      # No terminal (or end of input): the default, if any.
+      exec {fd}<&-
+      [[ -n $def ]] && printf '%s\n' "$def"
+      [[ -n $def ]]
+      return
+    fi
+    case $key in
+      $'\e')
+        rest=
+        IFS= read -rsn2 -t 0.1 rest <&"$fd" 2>/dev/null
+        case $rest in
+          '[A' | OA) cur=$(((cur - 1 + n) % n)) ;;
+          '[B' | OB) cur=$(((cur + 1) % n)) ;;
+          '') exec {fd}<&- && return 1 ;;
+        esac
+        ;;
+      k) cur=$(((cur - 1 + n) % n)) ;;
+      j) cur=$(((cur + 1) % n)) ;;
+      [1-9])
+        if ((key <= n)); then
+          cur=$((key - 1))
+          break
+        fi
+        ;;
+      q) exec {fd}<&- && return 1 ;;
+      '') break ;;
+    esac
+  done
+  exec {fd}<&-
+  printf '%s\n' "${opts[cur]}"
 }

@@ -20,6 +20,7 @@ think it should change, write a new record that supersedes the old one (and mark
 | [0011](0011-ci.md) | CI on GitHub Actions: Linux, macOS (Homebrew Bash), Bash 4.2 and the 4.1 guard in Docker | Accepted |
 | [0012](0012-self-rename.md) | `self rename` (resumable, one confirmation, `--keep-old`); install code shared with `init.sh` in `lib/install.sh` | Accepted |
 | [0013](0013-extensions-of-official-plugins.md) | `plugins/+<plugin>/` adds commands to an official plugin (`+` at every level), inactive if it is not active | Accepted |
+| [0014](0014-plugin-dependencies.md) | User plugins declare tools with `requires`; `self deps` installs/updates them with the configured package managers only; `ui::select` | Accepted |
 
 ## Template
 

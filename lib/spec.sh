@@ -10,6 +10,8 @@
 #                                       "value<TAB>description" allowed): suggested by
 #                                       completion, validated only with --strict
 #   example "subcommand --flag" ["explanation"]     (prefixed with the root command name)
+#   requires <command> [--optional] [--apt|--dnf|--pacman|--zypper|--apk|--brew <package|->]
+#                                       a tool the command needs (decision 0014)
 #
 # Values reach cmd.sh as FLAG_<NAME> and ARG_<NAME> (upper case, "-" → "_").
 
@@ -19,6 +21,7 @@
 declare -gA _CB_F_SHORT=() _CB_F_TYPE=() _CB_F_DESC=() _CB_F_DEFAULT=() _CB_F_REQ=() _CB_F_CHOICES=() _CB_F_BYSHORT=()
 declare -gA _CB_F_CHFROM=() _CB_F_STRICT=()
 declare -gA _CB_A_DESC=() _CB_A_OPT=() _CB_A_VAR=() _CB_A_CHOICES=() _CB_A_CHFROM=() _CB_A_STRICT=()
+declare -gA _CB_R_OPT=() _CB_R_PKG=() # requires: tool -> 1 if optional; "<manager>/<tool>" -> package
 
 cb::spec_reset() {
   _CB_ABOUT= _CB_DESC= _CB_SPEC_FILE=
@@ -26,6 +29,7 @@ cb::spec_reset() {
   _CB_F_SHORT=() _CB_F_TYPE=() _CB_F_DESC=() _CB_F_DEFAULT=() _CB_F_REQ=() _CB_F_CHOICES=() _CB_F_BYSHORT=()
   _CB_F_CHFROM=() _CB_F_STRICT=()
   _CB_A_DESC=() _CB_A_OPT=() _CB_A_VAR=() _CB_A_CHOICES=() _CB_A_CHFROM=() _CB_A_STRICT=()
+  _CB_REQS=() _CB_R_OPT=() _CB_R_PKG=()
 }
 
 # Possible values of a flag (F) or an argument (A), one "value<TAB>description" per line.
@@ -124,6 +128,31 @@ description() { _CB_DESC=$*; }
 example() {
   (($# >= 1)) || cb::_spec_err 'usage: example "command" ["explanation"]'
   _CB_EXAMPLES+=("$1" "${2:-}")
+}
+
+# A tool the command needs. The package has the name of the tool unless a package manager
+# option says otherwise ("-": not packaged for that manager). Checked before the command
+# runs, unless --optional (the command then checks it itself: command -v).
+requires() {
+  local usage='usage: requires <command> [--optional] [--apt|--dnf|--pacman|--zypper|--apk|--brew <package|->]'
+  local tool=${1:-}
+  [[ $tool =~ ^[a-zA-Z0-9][a-zA-Z0-9._+-]*$ ]] || cb::_spec_err "invalid command name '$tool' ($usage)"
+  shift
+  [[ -n ${_CB_R_OPT[$tool]+x} ]] && cb::_spec_err "'$tool' is required twice"
+  _CB_R_OPT[$tool]=
+  while (($#)); do
+    case $1 in
+      --optional) _CB_R_OPT[$tool]=1 && shift ;;
+      --apt | --dnf | --pacman | --zypper | --apk | --brew)
+        [[ ${2:-} =~ ^([a-zA-Z0-9@][a-zA-Z0-9._+@/-]*|-)$ ]] || cb::_spec_err "$1 expects a package name or '-' ($usage)"
+        _CB_R_PKG[${1#--}/$tool]=$2
+        shift 2
+        ;;
+      *) cb::_spec_err "unknown option '$1' for requires $tool" ;;
+    esac
+  done
+  _CB_REQS+=("$tool")
+  return 0
 }
 
 flag() {

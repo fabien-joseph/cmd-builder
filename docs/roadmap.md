@@ -34,14 +34,17 @@ Keep this file current: move items to **Done** when shipped, add follow-ups you 
 - Extensions of official plugins (decision 0013): `plugins/+system/disk/` adds
   `mu system disk` next to `mu system info`; `self new` creates them; the AI guide no
   longer steers users to another plugin name.
+- Plugin dependencies (decision 0014): `requires` in `flags.sh`, checked before running;
+  `self deps` / `install` / `update` / `managers`; package manager asked by `init.sh`.
+  `ui::select`, an arrow-key menu in pure Bash (no `fzf` needed).
 - `self guide [request]`: the request is appended at the end of the guide, to paste
   everything as a single message.
 
 ## Next
 
-In this order (owner's choice, 2026-11-08; then agree on the order of the rest):
+Next step (2026-11-08):
 
-1. [ ] Talk with the owner about **dependencies** (topic to be defined by the owner).
+- [ ] Agree with the owner on the order of the *Accepted* list below.
 
 Accepted, not scheduled yet:
 
@@ -58,6 +61,10 @@ Accepted, not scheduled yet:
 - [ ] Optional timeout for `--choices-from` (a slow command currently blocks <kbd>Tab</kbd>).
 
 ## Ideas (not decided)
+
+- `requires` with a minimal version (`--min 0.40`): needs reading each tool's `--version`.
+- Other dependency sources (pip, cargo, npm, install scripts), restricted like the
+  package managers.
 
 - Plugins in other languages with a helper library (Python) for `ui::`-like output. Kept,
   not urgent.

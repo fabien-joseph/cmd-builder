@@ -125,7 +125,8 @@ Explain each step in one or two sentences, so that the user understands what the
 - In `cmd.sh`, never parse `"$@"` by hand: declare every option and argument in `flags.sh`
   and read `FLAG_*` / `ARG_*`. Bool flags are `0` or `1`.
 - `cmd.sh` needs no shebang and no `set -e`. Print results on stdout; print messages with
-  the `ui::` helpers (they go to stderr). Ask with `ui::confirm` before any destructive
+  the `ui::` helpers (they go to stderr). To let the user pick in a list, use `ui::select`
+  (arrow keys, pure Bash), not `fzf`. Ask with `ui::confirm` before any destructive
   action. Stop on errors with `ui::die "message"`.
 - Bash 4.2 compatible code only. Write for the system of *Setup* with its standard tools;
   make the code portable to other systems (Linux, macOS) only if the user asks. If the
@@ -146,8 +147,10 @@ Explain each step in one or two sentences, so that the user understands what the
 - If something does not work, tell the user to run `__CB_NAME__ self doctor`, which checks
   the installation, every `flags.sh` and every `example` against its own declarations.
 - A new command works at once, Tab completion included: nothing to reload or reinstall.
-- Do not check standard tools of the system (`ps`, `awk`, `df`...) with `command -v`, only
-  extra ones. Do not write `--default 0` on a bool flag: it is already the default.
+- Do not check standard tools of the system (`ps`, `awk`, `df`...) with `command -v`.
+  Declare every extra tool the command needs with `requires <tool>` in `flags.sh` (see the
+  reference): the framework then refuses to run while it is missing and the user installs
+  it with `__CB_NAME__ self deps install`. Never tell the user to install it by hand. Do not write `--default 0` on a bool flag: it is already the default.
 - See *Before answering: ask when the request is unclear* above: never guess on a point
   that changes the command; a choice you make on a minor detail must be stated.
 

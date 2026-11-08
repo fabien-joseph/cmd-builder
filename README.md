@@ -39,6 +39,16 @@ If the `>>>` marker of the rc block is there but its `<<<` end marker is not (ed
 hand), the rc file is left untouched with a warning and the uninstall exits with code 1:
 remove the block by hand. `./init.sh` without a name only prints the usage.
 
+### Tools your plugins need
+
+Official plugins need nothing beyond Bash. A personal command can declare the tools it
+needs (`requires fzf` in its `flags.sh`, see [docs/plugin-authoring.md](docs/plugin-authoring.md)):
+it then refuses to run while one is missing, and tells you to run `mu self deps install`.
+`init.sh` asks once which package manager to use for them (the one detected on your system
+is suggested); `mu self deps managers add|remove` changes it later. Only the managers
+listed there are ever used, always after a confirmation (with `sudo` when needed). For a
+security fix, `mu self deps update` updates them all; `mu self update` reminds you of it.
+
 ### Rename the root command
 
 ```bash
@@ -192,7 +202,7 @@ ui::success "Done"
 | `CB_ROOT` / `CB_CONFIG_DIR` | cmd-builder root / `~/.config/mu` |
 
 Helpers: `ui::info`, `ui::success`, `ui::warn`, `ui::error` (on stderr), `ui::die "msg" [code]`,
-`ui::title`, `ui::confirm "Question?" [y|n]`, `ui::ask "Question" [default]`, and the colours
+`ui::title`, `ui::confirm "Question?" [y|n]`, `ui::ask "Question" [default]`, `ui::select "Question" [-d default] option...` (arrow-key menu, pure Bash), and the colours
 `UI_BOLD`, `UI_GREEN`, `UI_RESET`… (disabled when `NO_COLOR` is set or when the output is not a terminal).
 
 ## Plugins: official, personal and conflicts
@@ -225,6 +235,7 @@ Helpers: `ui::info`, `ui::success`, `ui::warn`, `ui::error` (on stderr), `ui::di
 ```
 disable core:system                 # disables a plugin
 rename  core:docker core-docker     # exposes it under another name
+package-manager apt                 # installs the tools your plugins need (repeatable)
 ```
 
 ## Built-in commands
@@ -237,6 +248,10 @@ rename  core:docker core-docker     # exposes it under another name
 | `mu self plugins enable <plugin>` | re-enables a plugin (name or id, Tab offers the disabled plugins) |
 | `mu self plugins disable <plugin>` | disables a plugin (name or id, Tab offers the active plugins) |
 | `mu self rename <name> [--keep-old]` | renames the root command, keeping the config (see [Rename the root command](#rename-the-root-command)) |
+| `mu self deps` | lists the tools your commands need (`requires` in `flags.sh`), their state and the commands using them |
+| `mu self deps install [--all]` | installs the missing tools with your package manager, after one confirmation (`--all`: optional ones too) |
+| `mu self deps update` | updates every installed tool your commands need (security fixes) |
+| `mu self deps managers` | lists the package managers used (`mu self deps managers add <manager>` / `mu self deps managers remove <manager>`); supported: apt, dnf, pacman, zypper, apk, brew |
 | `mu self doctor` | checks the installation, the config, conflicts, every `flags.sh` and every `example` |
 | `mu self completion bash\|zsh` | prints the completion script |
 | `mu self guide [request] [-o file]` | prints a guide for an AI assistant (ChatGPT, Claude…) that has no access to your machine, so it can tell you step by step how to create a command (`--no-commands`: do not list your commands). A request given on the command line is appended at the end, to paste everything as one message: `mu self guide "I want 'mu test hello', which prints hello"` |

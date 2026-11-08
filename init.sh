@@ -128,6 +128,10 @@ ui::success "command installed: $link → $target"
 
 cb::config_ensure
 ui::success "configuration: $CB_CONFIG_DIR/config"
+# Package manager for the tools user plugins may need (decision 0014): asked once.
+source "$CB_ROOT/lib/deps.sh"
+cb::config_load
+((${#_CB_PMS[@]})) || cb::pm_ask || true
 cb::completion_install
 ui::success "completion generated in $CB_CONFIG_DIR/"
 
