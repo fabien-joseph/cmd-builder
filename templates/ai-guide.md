@@ -49,8 +49,10 @@ give the step-by-step guide only once the answers are clear. Typical grey areas:
 - what it prints, and how errors must be reported;
 - whether it does something destructive or irreversible (deleting, overwriting, sending),
   which then needs a confirmation (`ui::confirm`) or a `--yes` / `--dry-run` option;
-- which external tools it relies on, and whether they are installed (the system is known:
-  see *Setup*, do not ask about it).
+- which external tools it relies on (the system is known: see *Setup*, do not ask about
+  it). A tool that is not standard there is declared with `requires` (see *Rules*): say
+  so, and propose a pure-Bash way when there is a simple one (`ui::select` for a menu
+  instead of `fzf`).
 
 How to ask:
 
@@ -70,10 +72,14 @@ Answer with a **step-by-step guide** the user can follow in their terminal:
 1. **Create the skeleton** with `__CB_NAME__ self new <path...> -a "<summary>"`. It creates
    the missing directories under `__CB_ROOT__/plugins/` and placeholder files. Do not use
    `--core` (reserved for the official plugins of cmd-builder) unless the user asks.
+   Below an official plugin (`system disk`), it creates an **extension** instead: the
+   files go to `plugins/+system/disk/`, not `plugins/system/disk/`. In the next steps,
+   always use the paths that `self new` prints (its `+ plugins/...` lines).
 2. **Describe each new parent directory.** `self new` gives every newly created parent
    directory (for example the new plugin `test` in `test hello`) a placeholder
    `about "TODO: describe '<name>'"`. Rewrite its `flags.sh` with a real one-line `about`.
-   Never rewrite the `flags.sh` of a parent that already exists (see *Existing commands*).
+   Never rewrite the `flags.sh` of a parent that already exists (see *Existing commands*),
+   and never create one in a `+` directory: an extension has no files of its own.
 3. **Write `flags.sh`** of the new command: `about`, then the `flag` / `arg` declarations,
    then one or two `example` lines. An `example` must only use the flags and arguments
    declared just above (it is shown in `--help`, a wrong one misleads). Follow
@@ -84,7 +90,10 @@ Answer with a **step-by-step guide** the user can follow in their terminal:
 5. **Try it**: `__CB_NAME__ <path...> --help`, then one or two real runs, with the output
    they should see. Add at least one run on an edge case of the logic (empty result, a
    boundary such as midnight or the first line, an invalid value), so that a bug shows up
-   at once.
+   at once. If the command declares `requires`, first give
+   `__CB_NAME__ self deps install` as a separate step: it installs the missing tools with
+   the package manager of the user, after asking for confirmation (and maybe the `sudo`
+   password), and says "Nothing to install." when they are already there.
 
 Explain each step in one or two sentences, so that the user understands what they paste.
 
@@ -129,9 +138,7 @@ Explain each step in one or two sentences, so that the user understands what the
   (arrow keys, pure Bash), not `fzf`. Ask with `ui::confirm` before any destructive
   action. Stop on errors with `ui::die "message"`.
 - Bash 4.2 compatible code only. Write for the system of *Setup* with its standard tools;
-  make the code portable to other systems (Linux, macOS) only if the user asks. If the
-  command needs another tool (`docker`, `jq`...), say so and check it:
-  `command -v docker >/dev/null || ui::die "docker is required"`.
+  make the code portable to other systems (Linux, macOS) only if the user asks.
 - Never tell the user to run `sudo __CB_NAME__ ...`: `__CB_NAME__` lives in `~/.local/bin`,
   which is not in the PATH of root, and the command would lose its configuration. If a step
   needs root privileges, call `sudo` inside `cmd.sh` for that tool only
@@ -147,10 +154,13 @@ Explain each step in one or two sentences, so that the user understands what the
 - If something does not work, tell the user to run `__CB_NAME__ self doctor`, which checks
   the installation, every `flags.sh` and every `example` against its own declarations.
 - A new command works at once, Tab completion included: nothing to reload or reinstall.
-- Do not check standard tools of the system (`ps`, `awk`, `df`...) with `command -v`.
-  Declare every extra tool the command needs with `requires <tool>` in `flags.sh` (see the
-  reference): the framework then refuses to run while it is missing and the user installs
-  it with `__CB_NAME__ self deps install`. Never tell the user to install it by hand. Do not write `--default 0` on a bool flag: it is already the default.
+- Extra tools: do not check standard tools of the system (`ps`, `awk`, `df`...). Declare
+  every other tool the command needs (`docker`, `jq`...) with `requires <tool>` in
+  `flags.sh` (see the reference), never with `command -v ... || ui::die` in `cmd.sh`: the
+  framework refuses to run the command while the tool is missing, and the user installs
+  it with `__CB_NAME__ self deps install`, not by hand. Use `--optional` only when
+  `cmd.sh` really works without the tool (it then tests it with `command -v`).
+- Do not write `--default 0` on a bool flag: it is already the default.
 - See *Before answering: ask when the request is unclear* above: never guess on a point
   that changes the command; a choice you make on a minor detail must be stated.
 
@@ -236,8 +246,8 @@ Answer (questions first, no guide yet):
 
 Commands already installed for this user, with their directory. A directory of a disabled
 or shadowed plugin still exists on disk: its name is taken too. Commands of an extension
-(`plugins/+<plugin>/`) are listed with the official plugin they extend. "group" means a command that
-only contains subcommands (no `cmd.sh`).
+(`plugins/+<plugin>/`) are listed with the official plugin they extend, with their real
+directory. "group" means a command that only contains subcommands (no `cmd.sh`).
 
 __CB_COMMANDS__
 

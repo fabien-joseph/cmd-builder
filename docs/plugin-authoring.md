@@ -240,7 +240,7 @@ unless `-5` is a declared short flag. `-` alone is a positional.
 | `CB_NAME` | root command name (`mu`) |
 | `CB_COMMAND` | full command path (`mu backup db restore`) |
 | `CB_COMMAND_DIR` | directory of the running command |
-| `CB_PLUGIN_ROOT` | directory of the top-level plugin |
+| `CB_PLUGIN_ROOT` | directory of the top-level plugin (for a command of an extension: `plugins/+<plugin>`) |
 | `CB_ROOT` | cmd-builder checkout |
 | `CB_CONFIG_DIR` | `~/.config/<name>` |
 
