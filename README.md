@@ -192,7 +192,7 @@ ui::success "Done"
 | `CB_ROOT` / `CB_CONFIG_DIR` | cmd-builder root / `~/.config/mu` |
 
 Helpers: `ui::info`, `ui::success`, `ui::warn`, `ui::error` (on stderr), `ui::die "msg" [code]`,
-`ui::title`, `ui::confirm "Question?" [y|n]`, `ui::ask "Question" [default]`, and the colours
+`ui::title`, `ui::confirm "Question?" [y|n]`, `ui::ask "Question" [default]`, `ui::select "Question" [-d default] option...` (arrow-key menu, pure Bash), and the colours
 `UI_BOLD`, `UI_GREEN`, `UI_RESET`… (disabled when `NO_COLOR` is set or when the output is not a terminal).
 
 ## Plugins: official, personal and conflicts

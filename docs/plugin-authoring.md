@@ -231,6 +231,7 @@ unless `-5` is a declared short flag. `-` alone is a positional.
 | `ui::title "text"` | bold line on stdout |
 | `ui::confirm "Question ?" [y\|n]` | returns 0 for yes; reads `/dev/tty`; without a terminal always returns 1 |
 | `ui::ask "Question" [default]` | prints the answer (or the default) on stdout |
+| `ui::select "Question" [-d default] option...` | menu: arrow keys (or `j`/`k`, or the option number) then Enter; prints the chosen option on stdout. Esc or `q` cancels (returns 1). Without a terminal: prints the default if given, otherwise returns 1. Pure Bash, no `fzf` needed: `choice=$(ui::select "Environment?" dev staging prod) \|\| ui::die "cancelled"` |
 
 Colours for stdout: `UI_BOLD`, `UI_DIM`, `UI_RED`, `UI_GREEN`, `UI_YELLOW`, `UI_BLUE`,
 `UI_CYAN`, `UI_RESET` — empty when stdout is not a terminal or `NO_COLOR` is set.

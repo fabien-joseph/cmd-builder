@@ -616,6 +616,29 @@ _CB_TTY=$TMP/yes bash "$TMP/app/init.sh" --uninstall ww >/dev/null 2>&1
 _CB_TTY=$TMP/yes bash "$TMP/app/init.sh" --uninstall yy >/dev/null 2>&1
 rm -rf "$LB" "$CF"/{zz,yy,ww} "$HOME/.bashrc" "$HOME/.zshrc" "$TMP/yes"
 
+# ui::select: keys read from _CB_TTY (arrows, j/k, numbers, Enter, Esc/q)
+mkdir -p "$P/pick" && printf '%s\n' 'about "Pick"' 'arg options "Options" --variadic' >"$P/pick/flags.sh"
+echo 'r=$(ui::select "Pick one" "$@") && echo "picked=$r" || echo "status=$?"' >"$P/pick/cmd.sh"
+printf '\e[B\n' >"$TMP/keys"
+check "select: arrow down + Enter"             "_CB_TTY='$TMP/keys' tt pick a b c" "picked=b"
+printf 'k\n' >"$TMP/keys"
+check "select: k wraps to the last option"     "_CB_TTY='$TMP/keys' tt pick a b c" "picked=c"
+printf 'jj\e[A\n' >"$TMP/keys"
+check "select: j and arrow up"                 "_CB_TTY='$TMP/keys' tt pick a b c" "picked=b"
+printf '3' >"$TMP/keys"
+check "select: a number picks at once"         "_CB_TTY='$TMP/keys' tt pick a b c" "picked=c"
+check "select: options with spaces"            "_CB_TTY='$TMP/keys' tt pick a b 'c d'" "picked=c d"
+printf 'q' >"$TMP/keys"
+check "select: q cancels"                      "_CB_TTY='$TMP/keys' tt pick a b" "status=1"
+printf '\e' >"$TMP/keys"
+check "select: Esc cancels"                    "_CB_TTY='$TMP/keys' tt pick a b" "status=1"
+check "select: no terminal = status 1"         "tt pick a b" "status=1"
+check "select: no terminal = the default"      "bash -c 'source \"\$0\"; ui::select Q -d b a b c' '$TMP/app/lib/ui.sh' 2>/dev/null" "b"
+printf '\n' >"$TMP/keys"
+check "select: Enter keeps the default"        "_CB_TTY='$TMP/keys' bash -c 'source \"\$0\"; ui::select Q -d c a b c' '$TMP/app/lib/ui.sh' 2>/dev/null" "c"
+check "select: list shown without a terminal"  "tt pick a b" "  2) b"
+rm -rf "$P/pick" "$TMP/keys"
+
 # Repository language: no French left in code comments
 check "code comments are in English" \
   "grep -rnE '^[[:space:]]*#.*( : |[àâçéèêëîïôûùüÿœ])' '$ROOT'/{lib,builtin,core,templates,main.sh,init.sh} | wc -l" "0"

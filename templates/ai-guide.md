@@ -125,7 +125,8 @@ Explain each step in one or two sentences, so that the user understands what the
 - In `cmd.sh`, never parse `"$@"` by hand: declare every option and argument in `flags.sh`
   and read `FLAG_*` / `ARG_*`. Bool flags are `0` or `1`.
 - `cmd.sh` needs no shebang and no `set -e`. Print results on stdout; print messages with
-  the `ui::` helpers (they go to stderr). Ask with `ui::confirm` before any destructive
+  the `ui::` helpers (they go to stderr). To let the user pick in a list, use `ui::select`
+  (arrow keys, pure Bash), not `fzf`. Ask with `ui::confirm` before any destructive
   action. Stop on errors with `ui::die "message"`.
 - Bash 4.2 compatible code only. Write for the system of *Setup* with its standard tools;
   make the code portable to other systems (Linux, macOS) only if the user asks. If the

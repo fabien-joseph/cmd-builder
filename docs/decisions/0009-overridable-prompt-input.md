@@ -24,5 +24,5 @@ terminal exists. Pointing it to a file containing `y` tests the "yes" path.
   auto-accepting destructive actions easy, against rule 5. Not wanted for now.
 
 ## Consequences
-New prompts must go through `ui::confirm` / `ui::ask` (never `read </dev/tty` directly).
+New prompts must go through `ui::confirm` / `ui::ask` / `ui::select` (never `read </dev/tty` directly).
 Check that the suite does not hang from a terminal with `script -qec ./tests/run.sh /dev/null`.
