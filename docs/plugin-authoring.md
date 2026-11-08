@@ -122,6 +122,9 @@ $@=prod dump.sql users orders
 - `description` — free text, shown under the header in `--help`.
 - `example` — repeatable; the root command name is prefixed automatically
   (`example "backup db restore prod"` renders as `mu backup db restore prod`).
+  `self doctor` checks each example like the parser would (unknown option, missing
+  required flag or argument, unknown command, unbalanced quotes, root name written in it)
+  and warns; values of `--choices-from --strict` are not checked there.
 
 ### `flag`
 

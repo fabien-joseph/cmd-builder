@@ -29,21 +29,22 @@ Keep this file current: move items to **Done** when shipped, add follow-ups you 
 - `self rename <name> [--keep-old]` (decision 0012): moves link, config, completion and rc
   blocks to a new root name, resumable, one confirmation; install code shared with
   `init.sh` in `lib/install.sh`.
+- `self doctor` checks every `example` like the parser would (warnings). CI on
+  `actions/checkout` (Node.js 20 deprecation).
+- `self guide [request]`: the request is appended at the end of the guide, to paste
+  everything as a single message.
 
 ## Next
 
-In this order (owner's choice, 2026-11-08):
+In this order (owner's choice, 2026-11-08; then agree on the order of the rest):
 
-- [ ] Agree with the owner on the order of the *Accepted* list below.
+1. [ ] A user plugin can *extend* an official one instead of shadowing it
+      (`plugins/system/disk/` adds `mu system disk` next to `mu system info`). Today the AI
+      guide has to steer users to another plugin name, or to `self new --core`.
+2. [ ] Talk with the owner about **dependencies** (topic to be defined by the owner).
 
 Accepted, not scheduled yet:
 
-- [ ] `self doctor` checks every `example` of a `flags.sh` against its own declarations
-      (unknown option, missing required argument), like the parser would. An AI-written
-      plugin had a `--help` example with undeclared flags.
-- [ ] A user plugin can *extend* an official one instead of shadowing it
-      (`plugins/system/disk/` adds `mu system disk` next to `mu system info`). Today the AI
-      guide has to steer users to another plugin name, or to `self new --core`.
 - [ ] Repeatable flags (`--tag a --tag b`) / list type.
 - [ ] Inherited flags: a flag declared on a parent available to all its subcommands,
       **opt-in** per flag (not always relevant).
@@ -53,8 +54,6 @@ Accepted, not scheduled yet:
 - [ ] `self plugins install <git-url>`: clone a plugin into `plugins/`, with a **big
       warning** that the plugin is not official and runs code on the machine, and a
       confirmation (rule 5).
-- [ ] `self guide [request]`: optional request appended at the end of the guide, ready to
-      paste as a single message.
 - [ ] Automated test for zsh completion (needs zsh in the test environment).
 - [ ] Optional timeout for `--choices-from` (a slow command currently blocks <kbd>Tab</kbd>).
 

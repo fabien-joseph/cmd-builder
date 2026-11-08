@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0 # the docs checks look up the commit named in docs/handoff.md
       - name: Bash version
@@ -34,7 +34,7 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0 # the docs checks look up the commit named in docs/handoff.md
       - name: Install Bash >= 4.2
@@ -59,7 +59,7 @@ jobs:
     timeout-minutes: 10
     # Official bash images are Alpine based (BusyBox): GNU tools are added first.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0 # the docs checks look up the commit named in docs/handoff.md
       - name: Tests with Bash 4.2
