@@ -1,0 +1,3 @@
+# User plugins live in their own git repositories.
+/plugins/*
+!/plugins/README.md

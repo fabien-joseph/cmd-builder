@@ -1,0 +1,150 @@
+# Architecture
+
+How cmd-builder works internally. Read this before changing `lib/`, `main.sh`, `init.sh`
+or `builtin/`. For the plugin-facing contract, see [plugin-authoring.md](plugin-authoring.md).
+
+## Big picture
+
+```
+~/.local/bin/mu ──symlink──▶ main.sh
+                                │  resolves CB_ROOT, CB_NAME (= symlink name), CB_CONFIG_DIR
+                                ▼
+                           lib/core.sh  (sources every lib/*.sh)
+                                ▼
+                           cb::main  (lib/router.sh)
+                                │  1. cb::config_load    read ~/.config/mu/config
+                                │  2. cb::plugins_load   discover core/ + plugins/, resolve names
+                                │  3. route words → command directory
+                                ▼
+                           cb::run
+                                │  4. cb::spec_load      source <dir>/flags.sh (DSL)
+                                │  5. cb::parse          validate argv against the spec
+                                │  6. cb::export_values  FLAG_* / ARG_* / CB_* env vars
+                                ▼
+                 exec bash lib/run.sh <dir>/cmd.sh "$@"     (or exec <dir>/cmd "$@")
+```
+
+The command runs in a **fresh process** (`exec`): framework globals never leak into plugin
+code, and plugins written in any language receive the same environment.
+
+## Key concepts
+
+**Command directory.** A directory is a command if it contains `flags.sh`, `cmd.sh` or `cmd`
+(`cb::is_command_dir`). Its subdirectories that are themselves commands are its subcommands
+(`cb::children`). Names must match `^[a-zA-Z0-9][a-zA-Z0-9_-]*$`, so `_lib/`, `.git/` etc.
+are ignored. A command without an executable is a pure *router*: it shows its help.
+
+**Executable.** `cmd.sh` (sourced by `lib/run.sh` so `ui::` helpers are available) wins over
+`cmd` (any executable file). See `cb::executable`.
+
+**Routing.** After the plugin name, words that name a child command are consumed greedily;
+the first word that is not a child (or that starts with `-`) stops routing and everything
+left goes to the reached command. A child name therefore always wins over a positional
+argument with the same value.
+
+**Plugin ids and exposed names.** Every top-level plugin has an id `core:<dir>` or
+`user:<dir>` and an *exposed name* (the dir name, or the `rename` target from config).
+`cb::plugins_load` processes `core/` first, then `plugins/`, so a user plugin with the same
+exposed name **shadows** the core one. `self` is reserved. Conflicts are collected in
+`_CB_CONFLICTS` and reported by `self doctor`, `self plugins` and the root help.
+Plugin states: `active`, `disabled`, `reserved`, `shadowed:<id>`.
+
+## Files in `lib/`
+
+| File | Responsibility |
+|---|---|
+| `lib/core.sh` | Sources all libs in order; sets defaults for `CB_ROOT`, `CB_NAME`, `CB_CONFIG_DIR` when sourced outside `main.sh` |
+| `lib/util.sh` | Generic helpers: `cb::realpath` (portable symlink resolution), name validation, command-dir detection, `cb::children`, `cb::walk`, `cb::suggest`, `cb::dq` |
+| `lib/ui.sh` | Public `ui::` helpers and `UI_*` colours (also loaded into every `cmd.sh`) |
+| `lib/config.sh` | Reads/writes `$CB_CONFIG_DIR/config` (`disable`, `rename`); `cb::config_set_disabled` rewrites the file atomically |
+| `lib/plugins.sh` | Plugin discovery, disable/rename application, shadowing, `cb::plugin_dir` |
+| `lib/spec.sh` | The `flags.sh` DSL (`about`, `description`, `flag`, `arg`, `example`), spec state, static/dynamic choices (`cb::choices_of`, `cb::choice_ok`) |
+| `lib/help.sh` | Generated `--help` for a command (`cb::help`) and for the root (`cb::help_root`) |
+| `lib/parse.sh` | Argument parser (`cb::parse`) and env export (`cb::export_values`) |
+| `lib/router.sh` | `cb::main` (entry), `cb::run` (spec → parse → exec), unknown-command errors |
+| `lib/complete.sh` | Shell-agnostic completion engine (`cb::complete`) and completion script generation |
+| `lib/run.sh` | Tiny launcher: loads `ui.sh`, then sources the target `cmd.sh` with the remaining args |
+
+## Global state
+
+All framework globals are prefixed `_CB_` (never use that prefix in plugins).
+Spec state is **reset by `cb::spec_reset`** each time a `flags.sh` is loaded; only one spec
+is loaded at a time in the main process. To read another command's spec without clobbering
+the current one, use a subshell (that is what `cb::about_of` does).
+
+| Variable(s) | Filled by | Content |
+|---|---|---|
+| `_CB_DISABLED`, `_CB_RENAME`, `_CB_CONFIG_ERRORS` | `cb::config_load` | parsed config |
+| `_CB_PLUGINS`, `_CB_PLUGIN_ID`, `_CB_PLUGIN_NAMES` | `cb::plugins_load` | active plugins by exposed name |
+| `_CB_IDS`, `_CB_ID_DIR`, `_CB_ID_NAME`, `_CB_ID_STATE`, `_CB_CONFLICTS` | `cb::plugins_load` | every discovered plugin, by id |
+| `_CB_ABOUT`, `_CB_DESC`, `_CB_EXAMPLES`, `_CB_SPEC_FILE` | `flags.sh` | command metadata |
+| `_CB_FLAGS` + `_CB_F_*` (assoc. by flag name) | `flag` | `TYPE`, `SHORT`, `DESC`, `DEFAULT`, `REQ`, `CHOICES`, `CHFROM`, `STRICT`; `_CB_F_BYSHORT` maps short → name |
+| `_CB_ARGS` + `_CB_A_*` (assoc. by arg name) | `arg` | `DESC`, `OPT`, `VAR`, `CHOICES`, `CHFROM`, `STRICT` |
+| `_CB_VAL`, `_CB_AVAL`, `_CB_POS` | `cb::parse` | parsed flag values, arg values, positionals |
+
+## Exit codes
+
+| Code | Meaning | Where |
+|---|---|---|
+| 0 | success, or help displayed | everywhere |
+| 1 | generic failure (`ui::die` default) | commands, `self doctor` with errors |
+| 2 | usage error: unknown command/option, invalid or missing value | `lib/parse.sh`, `lib/router.sh` |
+| 3 | invalid `flags.sh` (DSL error, reported as `file:line : message`) | `cb::_spec_err` |
+
+## Completion protocol
+
+Shell adapters (`templates/completion.bash`, `templates/completion.zsh`) call:
+
+```
+<name> __complete -- <word1> … <current word>
+```
+
+`cb::complete` prints one candidate per line as `value<TAB>description` (already filtered
+by the current word's prefix). Empty output means "fall back to file completion".
+The bash adapter re-splits `COMP_LINE` itself because `COMP_WORDS` also splits on `:` and
+`=`, then strips the part bash will not replace. The engine reuses the real routing and
+spec loading, so completion can never disagree with execution.
+
+`--choices-from` commands are evaluated with `eval` in a subshell, in the user's current
+directory, with `CB_COMMAND_DIR` / `CB_PLUGIN_ROOT` exported and the `flags.sh` functions
+in scope; stderr is discarded.
+
+## Configuration
+
+`$CB_CONFIG_DIR/config` (default `~/.config/<name>/config`), one directive per line,
+`#` comments:
+
+```
+disable <core|user>:<plugin>
+rename  <core|user>:<plugin> <new-name>
+```
+
+Invalid lines do not stop the program; they are collected in `_CB_CONFIG_ERRORS` and
+reported by `self doctor`.
+
+## Built-in commands (`builtin/self/`)
+
+They are ordinary command directories, routed for the reserved name `self`, and are the
+best examples of the framework in use. They source `lib/core.sh` to access internals.
+
+| Command | Role |
+|---|---|
+| `self update` | `git fetch` the main repo and every `plugins/*` with a `.git`, show new commits, confirm per repo, `git pull --ff-only`; `--check` only reports |
+| `self new` | scaffold a command path (`flags.sh` + `cmd.sh`), `--core`, `--git`, `--about` |
+| `self plugins` | list plugins with id and state |
+| `self plugins enable` / `self plugins disable` | toggle a plugin in the config (name or id, dynamic completion) |
+| `self doctor` | check environment, link, completion files, config, conflicts, every `flags.sh` |
+| `self completion` | print the bash or zsh completion script |
+
+`builtin/self/plugins/_resolve.sh` is a shared helper (ignored by routing thanks to `_`).
+
+## Installation layout (`init.sh`)
+
+| Path | Created by | Removed by `--uninstall` |
+|---|---|---|
+| `~/.local/bin/<name>` → `main.sh` | install | yes, only if it points to this checkout |
+| `~/.config/<name>/config` | install (`cb::config_ensure`) | after confirmation |
+| `~/.config/<name>/completion.{bash,zsh}` | install, `self update` | yes |
+| block `# >>> cmd-builder: <name> >>>` … `<<<` in `~/.bashrc`, `~/.zshrc` | install, after confirmation | yes (atomic rewrite, follows symlinked rc files) |
+
+Several installs under different names can coexist: everything is keyed by `CB_NAME`.
