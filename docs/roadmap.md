@@ -18,12 +18,14 @@ Keep this file current: move items to **Done** when shipped, add follow-ups you 
   flags `flags.sh` by their last command status, `self new` writes nothing when refused,
   symlinked config kept, Bash 4.2 minimum (decision 0008).
 - `init.sh` prints the `source <rc file>` line to load completion in the current terminal.
+- Tests never wait on the real terminal (`_CB_TTY`, decision 0009); "yes" paths tested.
 
 ## Next
 
 - [ ] Automated test for zsh completion (needs zsh in the test environment).
 - [ ] Optional timeout for `--choices-from` (a slow command currently blocks <kbd>Tab</kbd>).
-- [ ] CI (GitHub Actions) running `tests/run.sh` on Linux and macOS (Homebrew Bash).
+- [ ] CI (GitHub Actions) running `tests/run.sh` on Linux and macOS (Homebrew Bash), also
+      under a pseudo-terminal (`script`) to catch tests that reach a prompt.
 - [ ] Optionally test the Bash version guard on a real Bash 4.1 (e.g. in a container).
 
 ## Ideas (not decided)

@@ -55,6 +55,7 @@ README.md            user documentation
 ```bash
 ./tests/run.sh                    # all tests: end-to-end + doc consistency (must stay green)
 bash -n lib/*.sh main.sh init.sh  # syntax check
+script -qec ./tests/run.sh /dev/null  # Linux: same under a pseudo-terminal, must not hang on a prompt
 ```
 
 Try changes without touching your real setup — use an isolated `HOME`:

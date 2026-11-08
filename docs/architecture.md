@@ -55,7 +55,7 @@ Plugin states: `active`, `disabled`, `reserved`, `shadowed:<id>`.
 |---|---|
 | `lib/core.sh` | Sources all libs in order; sets defaults for `CB_ROOT`, `CB_NAME`, `CB_CONFIG_DIR` when sourced outside `main.sh` |
 | `lib/util.sh` | Generic helpers: `cb::realpath` (portable symlink resolution), name validation, command-dir detection, `cb::children`, `cb::walk`, `cb::suggest`, `cb::dq` |
-| `lib/ui.sh` | Public `ui::` helpers and `UI_*` colours (also loaded into every `cmd.sh`) |
+| `lib/ui.sh` | Public `ui::` helpers and `UI_*` colours (also loaded into every `cmd.sh`); prompts read `${_CB_TTY:-/dev/tty}` (decision 0009) |
 | `lib/config.sh` | Reads/writes `$CB_CONFIG_DIR/config` (`disable`, `rename`); `cb::config_set_disabled` rewrites the file atomically |
 | `lib/plugins.sh` | Plugin discovery, disable/rename application, shadowing, `cb::plugin_dir` |
 | `lib/spec.sh` | The `flags.sh` DSL (`about`, `description`, `flag`, `arg`, `example`), spec state, static/dynamic choices (`cb::choices_of`, `cb::choice_ok`) |

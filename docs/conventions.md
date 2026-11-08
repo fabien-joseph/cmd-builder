@@ -55,6 +55,8 @@ something plugin-specific (`_cb_enabled_plugins`, `_dyn_envs`) to avoid collisio
   independent steps, rewrite files atomically (temp file + `mv`).
 - Ask before destructive, network or rc-file actions (`ui::confirm`); without a terminal,
   `ui::confirm` returns "no" — never auto-accept.
+- Prompts only through `ui::confirm` / `ui::ask`, never `read </dev/tty` directly: tests
+  override the terminal with the internal `_CB_TTY` (decision 0009).
 - Only remove what we created and can identify (e.g. the symlink only if it points to this
   checkout, the rc block only between its markers).
 
