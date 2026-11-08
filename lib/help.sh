@@ -76,7 +76,7 @@ cb::help() {
 
   if ((${#children[@]})); then
     rows=()
-    for name in "${children[@]}"; do rows+=("$name" "$(cb::about_of "$dir/$name")"); done
+    for name in "${children[@]}"; do rows+=("$name" "$(cb::about_of "$(cb::child_dir "$dir" "$name")")"); done
     cb::_section Commands
     cb::_rows "${rows[@]}"
   fi

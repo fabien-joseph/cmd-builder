@@ -47,17 +47,26 @@ argument with the same value.
 `cb::plugins_load` processes `core/` first, then `plugins/`, so a user plugin with the same
 exposed name **shadows** the core one. `self` is reserved. Conflicts are collected in
 `_CB_CONFLICTS` and reported by `self doctor`, `self plugins` and the root help.
-Plugin states: `active`, `disabled`, `reserved`, `shadowed:<id>`.
+**Extensions** (decision 0013). `plugins/+<x>/` (id `user:+<x>`, name `+<exposed name>`)
+adds subcommands to `core:<x>`. `cb::_extensions_load` (end of `cb::plugins_load`) fills
+`_CB_OVL[<official command dir>]=<extension dir>`, recursively for `+<sub>` directories
+(`cb::_overlay`), and reports orphans, ignored root files and shadowed subcommands in
+`_CB_CONFLICTS`. Every tree walk goes through `cb::children` (merges the overlay),
+`cb::is_child` and `cb::child_dir` (the user directory wins): never build `$dir/$name`
+by hand. `cb::plugin_root_of` gives `CB_PLUGIN_ROOT` = the extension root for its commands.
+
+Plugin states: `active`, `disabled`, `reserved`, `shadowed:<id>`; for extensions
+`extends:<id>`, `inactive:<id>` (official plugin not active), `orphan`.
 
 ## Files in `lib/`
 
 | File | Responsibility |
 |---|---|
 | `lib/core.sh` | Sources all libs in order; sets defaults for `CB_ROOT`, `CB_NAME`, `CB_CONFIG_DIR` when sourced outside `main.sh` |
-| `lib/util.sh` | Generic helpers: `cb::realpath` (portable symlink resolution), name validation, command-dir detection, `cb::children`, `cb::walk`, `cb::suggest`, `cb::dq` |
+| `lib/util.sh` | Generic helpers: `cb::realpath` (portable symlink resolution), name validation, command-dir detection, `cb::children` / `cb::is_child` / `cb::child_dir` (extension-aware), `cb::walk` (`dir<TAB>words`), `cb::plugin_root_of`, `cb::suggest`, `cb::dq` |
 | `lib/ui.sh` | Public `ui::` helpers and `UI_*` colours (also loaded into every `cmd.sh`); prompts read `${_CB_TTY:-/dev/tty}` (decision 0009) |
 | `lib/config.sh` | Reads/writes `$CB_CONFIG_DIR/config` (`disable`, `rename`); `cb::config_set_disabled` rewrites the file atomically |
-| `lib/plugins.sh` | Plugin discovery, disable/rename application, shadowing, `cb::plugin_dir` |
+| `lib/plugins.sh` | Plugin discovery, disable/rename application, shadowing, extensions (`_CB_OVL`), `cb::plugin_dir` |
 | `lib/spec.sh` | The `flags.sh` DSL (`about`, `description`, `flag`, `arg`, `example`), spec state, static/dynamic choices (`cb::choices_of`, `cb::choice_ok`) |
 | `lib/help.sh` | Generated `--help` for a command (`cb::help`) and for the root (`cb::help_root`) |
 | `lib/parse.sh` | Argument parser (`cb::parse`) and env export (`cb::export_values`) |
@@ -80,7 +89,8 @@ functions (`name=()`): Bash 4.2 ignores `declare -g` for an assignment inside a 
 |---|---|---|
 | `_CB_DISABLED`, `_CB_RENAME`, `_CB_CONFIG_ERRORS` | `cb::config_load` | parsed config |
 | `_CB_PLUGINS`, `_CB_PLUGIN_ID`, `_CB_PLUGIN_NAMES` | `cb::plugins_load` | active plugins by exposed name |
-| `_CB_IDS`, `_CB_ID_DIR`, `_CB_ID_NAME`, `_CB_ID_STATE`, `_CB_CONFLICTS` | `cb::plugins_load` | every discovered plugin, by id |
+| `_CB_IDS`, `_CB_ID_DIR`, `_CB_ID_NAME`, `_CB_ID_STATE`, `_CB_CONFLICTS` | `cb::plugins_load` | every discovered plugin, by id (extensions included) |
+| `_CB_OVL` | `cb::plugins_load` | official command directory → directory of its extension |
 | `_CB_ABOUT`, `_CB_DESC`, `_CB_EXAMPLES`, `_CB_SPEC_FILE` | `flags.sh` | command metadata |
 | `_CB_FLAGS` + `_CB_F_*` (assoc. by flag name) | `flag` | `TYPE`, `SHORT`, `DESC`, `DEFAULT`, `REQ`, `CHOICES`, `CHFROM`, `STRICT`; `_CB_F_BYSHORT` maps short → name |
 | `_CB_ARGS` + `_CB_A_*` (assoc. by arg name) | `arg` | `DESC`, `OPT`, `VAR`, `CHOICES`, `CHFROM`, `STRICT` |
@@ -142,7 +152,7 @@ best examples of the framework in use. They source `lib/core.sh` to access inter
 | Command | Role |
 |---|---|
 | `self update` | `git fetch` the main repo and every `plugins/*` with a `.git`, show new commits, confirm per repo, `git pull --ff-only`; `--check` only reports |
-| `self new` | scaffold a command path (`flags.sh` + `cmd.sh`), `--core`, `--git`, `--about` |
+| `self new` | scaffold a command path (`flags.sh` + `cmd.sh`), `--core`, `--git`, `--about`; below an official plugin not replaced by the user, writes into its extension `plugins/+<x>/` (`+<group>` for official groups); refuses an official command or plugin as the target |
 | `self plugins` | list plugins with id and state |
 | `self plugins enable` / `self plugins disable` | toggle a plugin in the config (name or id, dynamic completion) |
 | `self rename` | rename the root command: plan + one confirmation, then new link, config moved, completion regenerated, rc blocks replaced in place, old config dir and old link last; resumable; `--keep-old` keeps the old name with its config as a symlink (decision 0012) |

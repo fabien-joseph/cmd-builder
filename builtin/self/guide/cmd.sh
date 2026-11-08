@@ -31,7 +31,7 @@ reference() {
 }
 
 commands() {
-  local id dir name d sub kind about
+  local id dir name d sub kind about state
   if ((!FLAG_COMMANDS)); then
     echo "Not shared by the user. Ask them whether the command (or its plugin) already exists."
     return
@@ -41,14 +41,18 @@ commands() {
     return
   fi
   for id in "${_CB_IDS[@]}"; do
-    dir=${_CB_ID_DIR[$id]} name=${_CB_ID_NAME[$id]}
-    printf '### Plugin `%s` (id `%s`, %s)\n\n' "$name" "$id" "${_CB_ID_STATE[$id]}"
-    while IFS= read -r d; do
-      sub=${d#"$dir"}
+    dir=${_CB_ID_DIR[$id]} name=${_CB_ID_NAME[$id]} state=${_CB_ID_STATE[$id]}
+    if [[ $id == user:+* ]]; then
+      # Its commands are listed with the official plugin when it is active.
+      printf '### Extension `%s` (id `%s`, `%s/`, %s)\n\n' "$name" "$id" "${dir#"$CB_ROOT"/}" "${state/:/ }"
+      continue
+    fi
+    printf '### Plugin `%s` (id `%s`, %s)\n\n' "$name" "$id" "$state"
+    while IFS=$'\t' read -r d sub; do
       kind=command
       [[ -z $(cb::executable "$d") ]] && kind=group
       about=$(cb::about_of "$d")
-      printf -- '- `%s %s%s` (%s, `%s/`)%s\n' "$CB_NAME" "$name" "${sub//\// }" "$kind" \
+      printf -- '- `%s %s%s` (%s, `%s/`)%s\n' "$CB_NAME" "$name" "${sub:+ $sub}" "$kind" \
         "${d#"$CB_ROOT"/}" "${about:+: $about}"
     done < <(cb::walk "$dir")
     echo

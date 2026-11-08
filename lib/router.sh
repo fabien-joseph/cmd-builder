@@ -31,11 +31,11 @@ cb::main() {
   top=$dir
   local -a path=("$CB_NAME" "$name")
   while (($#)) && cb::is_child "$dir" "$1"; do
-    dir=$dir/$1
+    dir=$(cb::child_dir "$dir" "$1")
     path+=("$1")
     shift
   done
-  cb::run "$dir" "$top" "${path[*]}" "$@"
+  cb::run "$dir" "$(cb::plugin_root_of "$dir" "$top")" "${path[*]}" "$@"
 }
 
 cb::_unknown_plugin() {

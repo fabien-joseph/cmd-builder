@@ -30,7 +30,7 @@ check_example() {
   fi
   w=("${w[@]:1}")
   while ((${#w[@]})) && cb::is_child "$dir" "${w[0]}"; do
-    dir=$dir/${w[0]}
+    dir=$(cb::child_dir "$dir" "${w[0]}")
     w=("${w[@]:1}")
   done
   # In a subshell: the parser exits on the first error. Dynamic --strict choices are not
@@ -73,7 +73,7 @@ done
 echo
 ui::title "Plugins"
 active=0
-for id in "${_CB_IDS[@]}"; do [[ ${_CB_ID_STATE[$id]} == active ]] && ((active++)); done
+for id in "${_CB_IDS[@]}"; do [[ ${_CB_ID_STATE[$id]} == active || ${_CB_ID_STATE[$id]} == extends:* ]] && ((active++)); done
 ok "${#_CB_IDS[@]} plugin(s) found, $active active"
 for c in "${_CB_CONFLICTS[@]}"; do wa "$c"; done
 
@@ -81,7 +81,10 @@ echo
 ui::title "Commands"
 count=0 bad=0
 dirs=("$CB_ROOT/builtin/self") names=(self)
-for id in "${_CB_IDS[@]}"; do dirs+=("${_CB_ID_DIR[$id]}") names+=("${_CB_ID_NAME[$id]}"); done
+for id in "${_CB_IDS[@]}"; do
+  [[ $id == user:+* ]] && continue # an extension is checked with the official plugin
+  dirs+=("${_CB_ID_DIR[$id]}") names+=("${_CB_ID_NAME[$id]}")
+done
 for t in "${!dirs[@]}"; do
   top=${dirs[t]}
   while IFS= read -r d; do
@@ -102,7 +105,7 @@ for t in "${!dirs[@]}"; do
       wa "$(rel "$d") does nothing (no cmd.sh, no cmd, no subcommand)"
     fi
     ((errors > before)) && ((bad++))
-  done < <(cb::walk "$top")
+  done < <(cb::walk "$top" | cut -f 1)
 done
 ((bad == 0)) && ok "$count valid command(s)"
 

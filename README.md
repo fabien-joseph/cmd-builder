@@ -202,6 +202,22 @@ Helpers: `ui::info`, `ui::success`, `ui::warn`, `ui::error` (on stderr), `ui::di
   each one can be its own git repository (`git clone … plugins/my-cmds`).
 - **Name conflict**: a personal plugin shadows the official plugin with the same name.
   `mu self doctor` and `mu self plugins` report it. To keep both, rename one in the config.
+- **Adding to an official plugin**: a directory `plugins/+<plugin>/` is an *extension*
+  (id `user:+<plugin>`): its subcommands are added to the official plugin, which keeps
+  its own commands. `mu self new system disk` creates it for you:
+  ```
+  plugins/+system/            extends core:system (no files of its own)
+  ├── disk/                   → mu system disk       (next to the official mu system info)
+  └── +net/                   extends the official group "mu system net"
+      └── trace/              → mu system net trace
+  ```
+  The `+` works at every level. A plain directory with the name of an official
+  subcommand (`plugins/+system/info/`) replaces it (reported, like a plugin conflict).
+  For a command of an extension, `CB_PLUGIN_ROOT` is `plugins/+system` (its own `_lib/`).
+  An extension follows its official plugin: renamed with it, inactive when it is
+  disabled, shadowed or missing (reported by `self doctor` and `self plugins`). It can be
+  disabled itself (`disable user:+system`), not renamed. Files at the root of an extension
+  (`plugins/+system/flags.sh`) are ignored and reported.
 - `self` is reserved for the root command.
 
 `~/.config/mu/config`:

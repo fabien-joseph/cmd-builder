@@ -42,6 +42,9 @@
 | `FLAG_*`, `ARG_*` | parsed values exported to commands |
 | `about`, `description`, `flag`, `arg`, `example` | DSL keywords (unprefixed on purpose, only meaningful inside `flags.sh`) |
 
+Command trees are walked only through `cb::children`, `cb::is_child` and `cb::child_dir`
+(never `$dir/$name` by hand): extensions merge two directories (decision 0013).
+
 Functions defined in a `flags.sh` for `--choices-from` should be prefixed with `_` and
 something plugin-specific (`_cb_enabled_plugins`, `_dyn_envs`) to avoid collisions.
 

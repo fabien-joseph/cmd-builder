@@ -73,12 +73,13 @@ cb::complete() {
   start=$n
   for ((i = 1; i < n; i++)); do
     if cb::is_child "$dir" "${words[i]}"; then
-      dir=$dir/${words[i]}
+      dir=$(cb::child_dir "$dir" "${words[i]}")
     else
       start=$i
       break
     fi
   done
+  CB_PLUGIN_ROOT=$(cb::plugin_root_of "$dir" "$CB_PLUGIN_ROOT")
   cb::spec_load "$dir" >/dev/null 2>&1
   export CB_COMMAND_DIR=$dir
 
@@ -134,7 +135,7 @@ cb::complete() {
 
   if ((start == n)); then
     while IFS= read -r name; do
-      [[ -n $name ]] && cb::_cand "$cur" "$name" "$(cb::about_of "$dir/$name")"
+      [[ -n $name ]] && cb::_cand "$cur" "$name" "$(cb::about_of "$(cb::child_dir "$dir" "$name")")"
     done < <(cb::children "$dir")
   fi
 
