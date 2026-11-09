@@ -31,7 +31,8 @@ tools must be one command away).
   package manager's own prompts are kept (no `-y`). A tool is installed with the first
   configured manager that packages it. `self update` only reminds the user of
   `self deps update` (no sudo there).
-- Presence only (`command -v`), no versions.
+- Presence only, no versions: an executable in `PATH` (`type -P`, since 2026-11-09:
+  `command -v` also accepted shell keywords such as `time`, builtins and functions).
 - **`ui::select`**, an arrow-key menu in pure Bash, so that the most common reason to need
   `fzf` disappears.
 

@@ -32,6 +32,19 @@ cb::spec_reset() {
   _CB_REQS=() _CB_R_OPT=() _CB_R_PKG=()
 }
 
+# Canonical form of a 64-bit integer, in REPLY ("08" -> 8, "-0" -> 0); returns 1 if <value>
+# is not an integer in [-9223372036854775808, 9223372036854775807]. Bash arithmetic reads
+# "010" as octal and fails on "08": commands receive the canonical decimal.
+cb::int_canon() {
+  local v=$1 sign= max=9223372036854775807
+  [[ $v =~ ^-?[0-9]+$ ]] || return 1
+  [[ $v == -* ]] && sign=- v=${v#-} max=9223372036854775808
+  v=${v#"${v%%[!0]*}"}
+  [[ -z $v ]] && v=0 sign=
+  if ((${#v} > 19)) || { ((${#v} == 19)) && [[ $v > $max ]]; }; then return 1; fi
+  REPLY=$sign$v
+}
+
 # Possible values of a flag (F) or an argument (A), one "value<TAB>description" per line.
 # Static (--choices) or computed on the fly (--choices-from). Dynamic choices are
 # evaluated in the user's current directory; functions defined in flags.sh and the
@@ -42,7 +55,9 @@ cb::choices_of() {
   if [[ -n $from ]]; then
     (eval "$from") 2>/dev/null </dev/null # never the keys typed after Tab, nor the command's input
   else
-    for c in $static; do printf '%s\t\n' "$c"; done
+    local -a list=()
+    read -ra list <<<"$static" # split on blanks, never glob-expanded ("*.txt" stays itself)
+    for c in "${list[@]}"; do printf '%s\t\n' "$c"; done
   fi
   return 0
 }
@@ -167,6 +182,7 @@ requires() {
 flag() {
   local usage='usage: flag <name> [-x] <bool|string|int> "description" [--default v] [--required] [--choices "a b" | --choices-from cmd [--strict]]'
   local name=${1:-} short= type desc def= hasdef= req= choices= _o_choices= _o_from= _o_strict=
+  local -a list=()
   [[ $name =~ ^[a-z0-9][a-z0-9-]*$ ]] || cb::_spec_err "invalid flag name '$name' ($usage)"
   shift
   if [[ ${1:-} == -? ]]; then
@@ -203,13 +219,19 @@ flag() {
     [[ -n ${_CB_F_BYSHORT[$short]+x} ]] && cb::_spec_err "-$short is already used by --${_CB_F_BYSHORT[$short]}"
   fi
   if [[ $type == bool ]]; then
+    [[ -n ${_CB_F_TYPE[no-$name]+x} ]] && cb::_spec_err "--$name: --no-$name is already a flag (it would not turn --$name off)"
     [[ -n $choices || -n $_o_from || -n $req ]] && cb::_spec_err "--$name is a bool: --choices, --choices-from and --required do not apply"
     [[ -z $hasdef || $def == 0 || $def == 1 ]] || cb::_spec_err "--$name is a bool: --default must be 0 or 1"
   fi
-  if [[ -n $hasdef && $type == int && ! $def =~ ^-?[0-9]+$ ]]; then
-    cb::_spec_err "--$name: default value '$def' is not an integer"
+  [[ $name == no-* && ${_CB_F_TYPE[${name#no-}]:-} == bool ]] &&
+    cb::_spec_err "--$name is reserved: it turns the bool --${name#no-} off"
+  [[ -n $req && -n $hasdef ]] && cb::_spec_err "--$name: --required and --default exclude each other"
+  if [[ -n $hasdef && $type == int ]]; then
+    cb::int_canon "$def" || cb::_spec_err "--$name: default value '$def' is not a 64-bit integer"
+    def=$REPLY
   fi
-  if [[ -n $hasdef && -n $choices ]] && ! cb::in_list "$def" $choices; then
+  read -ra list <<<"$choices"
+  if [[ -n $hasdef && -n $choices ]] && ! cb::in_list "$def" "${list[@]}"; then
     cb::_spec_err "--$name: default value '$def' is not one of the choices ($choices)"
   fi
 
@@ -245,6 +267,9 @@ arg() {
   done
   cb::_spec_choice_check "<$name>"
   [[ -n ${_CB_A_DESC[$name]+x} ]] && cb::_spec_err "argument '$name' is declared twice"
+  for last in "${_CB_ARGS[@]}"; do
+    [[ ${last//-/_} == "${name//-/_}" ]] && cb::_spec_err "'$name' and '$last' would both be ARG_${name//-/_}: rename one"
+  done
   if ((${#_CB_ARGS[@]})); then
     last=${_CB_ARGS[-1]}
     [[ -n ${_CB_A_VAR[$last]} ]] && cb::_spec_err "'$last' is variadic: it must be the last argument"

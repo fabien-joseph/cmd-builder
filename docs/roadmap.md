@@ -57,7 +57,7 @@ batch, in this order (owner's choice, 2026-11-09):
 4. [x] flags.sh isolation (in-process hardening) and `cmd.sh` started with `$0` = the command.
 5. [x] One router shared by run, completion, doctor and `self new` (rename-aware `self new`,
    an option before a subcommand is an error, "Did you mean", symlink-loop guard).
-6. [ ] DSL and `ui::` hardening (`int` canonical decimal, collisions, `requires` = executable in
+6. [x] DSL and `ui::` hardening (`int` canonical decimal, collisions, `requires` = executable in
    PATH, prompts on the terminal they read).
 7. [ ] System commands robustness (`self update` exit codes and re-exec, init/uninstall
    failure paths, config file mode, `CDPATH`, POSIX mode).

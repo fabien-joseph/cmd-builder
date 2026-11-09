@@ -15,6 +15,14 @@ cb::_rows() {
   done
 }
 
+# Words of a choices string joined with <sep> (several blanks count as one).
+cb::_join_choices() { # sep choices
+  local -a list=()
+  read -ra list <<<"$2"
+  local IFS=$1
+  printf '%s' "${list[*]}"
+}
+
 cb::_usage_args() {
   local s=' [options]' name a
   for name in "${_CB_ARGS[@]}"; do
@@ -58,7 +66,7 @@ cb::help() {
     rows=()
     for name in "${_CB_ARGS[@]}"; do
       r=${_CB_A_DESC[$name]}
-      [[ -n ${_CB_A_CHOICES[$name]} ]] && r+=" (choices: ${_CB_A_CHOICES[$name]// /, })"
+      [[ -n ${_CB_A_CHOICES[$name]} ]] && r+=" (choices: $(cb::_join_choices , "${_CB_A_CHOICES[$name]}" | sed 's/,/, /g'))"
       [[ -n ${_CB_A_CHFROM[$name]} ]] && r+=' (Tab for possible values)'
       [[ -n ${_CB_A_OPT[$name]} ]] && r+=' (optional)'
       rows+=("$name" "$r")
@@ -75,8 +83,8 @@ cb::help() {
       if [[ ${_CB_F_TYPE[$name]} == bool ]]; then
         [[ ${_CB_F_DEFAULT[$name]:-0} == 1 ]] && r+=" (on by default, --no-$name to disable)"
       else
-        if [[ -n ${_CB_F_CHOICES[$name]} ]]; then l+=" <${_CB_F_CHOICES[$name]// /|}>"; else l+=" <${_CB_F_TYPE[$name]}>"; fi
-        [[ -n ${_CB_F_DEFAULT[$name]+x} ]] && r+=" (default: ${_CB_F_DEFAULT[$name]})"
+        if [[ -n ${_CB_F_CHOICES[$name]} ]]; then l+=" <$(cb::_join_choices '|' "${_CB_F_CHOICES[$name]}")>"; else l+=" <${_CB_F_TYPE[$name]}>"; fi
+        [[ -n ${_CB_F_DEFAULT[$name]:-} ]] && r+=" (default: ${_CB_F_DEFAULT[$name]})"
         [[ -n ${_CB_F_CHFROM[$name]} ]] && r+=' (Tab for possible values)'
       fi
       [[ -n ${_CB_F_REQ[$name]} ]] && r+=' (required)'

@@ -119,6 +119,9 @@ for t in "${!dirs[@]}"; do
     fi
     [[ -f $d/cmd && ! -x $d/cmd ]] && ko "$(rel "$d")/cmd is not executable (chmod +x)"
     [[ -f $d/cmd.sh && -f $d/cmd ]] && wa "$(rel "$d"): both cmd.sh and cmd exist, cmd.sh is used"
+    if [[ -z $(cb::executable "$d") ]] && n=$( (cb::spec_load "$d" >/dev/null 2>&1; echo $((${#_CB_FLAGS[@]} + ${#_CB_ARGS[@]} + ${#_CB_REQS[@]}))) ) && ((n)); then
+      wa "$(rel "$d") declares options, arguments or requires but has no cmd.sh: they are ignored"
+    fi
     if [[ -z $(cb::executable "$d") && -z $(cb::children "$d") ]]; then
       wa "$(rel "$d") does nothing (no cmd.sh, no cmd, no subcommand)"
     fi

@@ -54,7 +54,7 @@ cb::_check_requires() {
   local -a missing=()
   for t in "${_CB_REQS[@]}"; do
     [[ -n ${_CB_R_OPT[$t]} ]] && continue
-    command -v "$t" >/dev/null 2>&1 || missing+=("$t")
+    type -P "$t" >/dev/null 2>&1 || missing+=("$t") # an executable: not a keyword (time), builtin or function
   done
   ((${#missing[@]})) || return 0
   list=$(printf "'%s', " "${missing[@]}")

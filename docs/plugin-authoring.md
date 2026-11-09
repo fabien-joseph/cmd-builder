@@ -159,23 +159,25 @@ Name: `^[a-z0-9][a-z0-9-]*$`. Optional short form `-x` (one letter or digit). Ty
 |---|---|---|
 | `bool` | `1` when given, else `0` | `--no-<name>` sets `0`; `-abc` groups bools |
 | `string` | any text | |
-| `int` | `^-?[0-9]+$` | validated |
+| `int` | `^-?[0-9]+$`, 64-bit | validated; the command receives the canonical decimal (`08` → `8`, `-0` → `0`), safe in `$(( ))` |
 
 | Option | Effect |
 |---|---|
 | `--default <v>` | default value (`0` or `1` for a bool; validated against type and `--choices`) |
-| `--required` | the flag must be given (not for bools) |
-| `--choices "a b c"` | fixed allowed values, separated by spaces (a value cannot contain a space): validated, offered by completion |
+| `--required` | the flag must be given (not for bools; not with `--default`) |
+| `--choices "a b c"` | fixed allowed values, separated by blanks (a value cannot contain a space; `*` and `?` are kept as they are): validated, offered by completion |
 | `--choices-from "<cmd>"` | values computed at completion time (see below) |
 | `--strict` | with `--choices-from` only: also validate the given value |
 
 `--help` and `-h` are reserved. A flag name or short form can only be declared once.
+`--no-<name>` is reserved by a bool `<name>`: no flag `no-<name>` next to it.
 A `bool` accepts only `--default 0|1`: `--required`, `--choices` and `--choices-from` are
 errors on it. Without `--default`, an absent `string` / `int` flag is empty.
 
 ### `arg`
 
-Name: `^[a-z0-9][a-z0-9_-]*$`. Positional, in declaration order.
+Name: `^[a-z0-9][a-z0-9_-]*$`. Positional, in declaration order. Two args may not share an
+environment name (`my-file` and `my_file` are both `ARG_MY_FILE`).
 
 | Option | Effect |
 |---|---|
@@ -216,8 +218,9 @@ requires mytool --brew -                   # "-": not packaged for brew
 requires jq --optional                     # the command works without it
 ```
 
-- Before running the command, the framework checks with `command -v` that every required
-  tool is installed. If one is missing, the command does not run:
+- Before running the command, the framework checks that every required tool is an
+  executable in `PATH` (`type -P`: a shell keyword such as `time`, a builtin or a function
+  does not count). If one is missing, the command does not run:
   `✗ 'mu x' needs 'fzf', not installed` / `Install: mu self deps install` (exit code 1).
   `--help` and Tab completion still work.
 - `--optional`: not checked. The command handles its absence itself, e.g.
@@ -273,5 +276,11 @@ unless `-5` is a declared short flag. `-` alone is a positional.
 Colours for stdout: `UI_BOLD`, `UI_DIM`, `UI_RED`, `UI_GREEN`, `UI_YELLOW`, `UI_BLUE`,
 `UI_CYAN`, `UI_RESET` — empty when stdout is not a terminal or `NO_COLOR` is set.
 
-Messages go to stderr so stdout stays pipeable.
+Messages go to stderr so stdout stays pipeable. Questions of `ui::confirm` / `ui::ask` /
+`ui::select` are printed on the terminal they read when stderr is redirected (`mu x 2>log`).
+`ui::title` is bold only when stdout is a terminal at the time of the call. The `-d` of
+`ui::select` must be one of the options (otherwise: an error, status 1).
+
+Flags, args and `requires` declared on a command without `cmd.sh` (a pure router) are
+ignored: `self doctor` reports them.
 <!-- guide:end -->

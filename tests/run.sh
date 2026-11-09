@@ -862,6 +862,33 @@ grep -v '^rename core:system' "$cfg" >"$TMP/cfg" && mv "$TMP/cfg" "$cfg" && echo
 check "self new: refused on a disabled official plugin" "tt self new system disk4; test -e '$P/+system' || echo nothing" $'is disabled: a command added to it would not run (see \'tt self plugins\')\nnothing'
 mv "$TMP/cfg.orig" "$cfg"
 
+# DSL and ui:: hardening (review of 2026-11-09, batch 6)
+mkdir -p "$P/num" "$TMP/globdir" && touch "$TMP/globdir/notes.txt"
+printf '%s\n' 'flag n int "N" --default 007' 'flag pat string "P" --choices "*.txt   *.md" --default "*.txt"' 'flag e string "E" --default ""' >"$P/num/flags.sh"
+echo 'echo "n=$FLAG_N pat=$FLAG_PAT"' >"$P/num/cmd.sh"
+check_eq "int: canonical decimal"               "tt num --n 08" "n=8 pat=*.txt"
+check_eq "int: default canonical too"           "tt num" "n=7 pat=*.txt"
+check "int: 64-bit range"                       "tt num --n 9223372036854775808" "--n expects an integer"
+check_eq "int: lowest 64-bit value"             "tt num --n -9223372036854775808" "n=-9223372036854775808 pat=*.txt"
+check "choices: never glob-expanded"            "cd '$TMP/globdir' && tt num --pat '*.md' && tt __complete -- num --pat ''" "*.txt"
+check "help: choices with several blanks"       "tt num --help" "--pat <*.txt|*.md>"
+check "help: no empty default shown"            "tt num --help | grep -c 'default: )'" "0"
+check "parse: '--=x' is an unknown option"      "tt num --=x" "unknown option '--=x'"
+printf '%s\n' 'flag color bool "C"' 'flag no-color bool "N"' >"$P/num/flags.sh"
+check "spec: no-x next to the bool x refused"   "tt num" "--no-color is reserved: it turns the bool --color off"
+printf '%s\n' 'arg my-file "A"' 'arg my_file "B"' >"$P/num/flags.sh"
+check "spec: two args with one ARG_ name"       "tt num a b" "'my_file' and 'my-file' would both be ARG_my_file"
+printf '%s\n' 'flag k string "K" --required --default x' >"$P/num/flags.sh"
+check "spec: --required with --default refused" "tt num" "--required and --default exclude each other"
+printf '%s\n' 'requires select' >"$P/num/flags.sh"
+check "requires: a keyword is not an executable" "tt num" "'tt num' needs 'select', not installed"
+rm -rf "$P/num" "$TMP/globdir"
+mkdir -p "$P/grp/leaf" && printf '%s\n' 'flag v bool "V"' 'requires cbnone' >"$P/grp/flags.sh" && echo 'echo leaf' >"$P/grp/leaf/cmd.sh"
+check "doctor: options of a router reported"    "tt self doctor" "plugins/grp declares options, arguments or requires but has no cmd.sh: they are ignored"
+check "deps: requires of a router ignored"      "tt self deps 2>&1 | grep -c cbnone" "0"
+rm -rf "$P/grp"
+check "ui::select: default not an option"       "bash -c 'source \"\$0\"; ui::select Q -d foo a b; echo \$?' '$TMP/app/lib/ui.sh' 2>&1" $'the default \'foo\' is not one of the options\n1'
+
 # Behaviours no check covered (surviving mutants of the review of 2026-11-09, docs/testing.md)
 check "parse: --no-x only for bools"            "tt demo greet --no-key -k K Bob" "unknown option '--no-key'"
 check "parse: a bool takes no value"            "tt demo greet --loud=1 -k K Bob" "--loud does not take a value"

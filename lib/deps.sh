@@ -90,6 +90,7 @@ cb::deps_collect() {
           [[ -n ${_CB_DEP_PKG[${kv%%=*}/$tool]+x} ]] || _CB_DEP_PKG[${kv%%=*}/$tool]=${kv#*=}
         done
       done < <(
+        [[ -n $(cb::executable "$d") ]] || exit 0 # a router never runs: its requires are never checked
         cb::spec_load "$d" >/dev/null 2>&1 || exit 0
         for tool in "${_CB_REQS[@]}"; do
           pkgs=
@@ -107,4 +108,4 @@ cb::deps_collect() {
 }
 
 # True if <tool> is installed.
-cb::dep_ok() { command -v "$1" >/dev/null 2>&1; }
+cb::dep_ok() { type -P "$1" >/dev/null 2>&1; }

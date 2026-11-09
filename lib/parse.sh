@@ -29,8 +29,9 @@ cb::_choice_err() {
 
 cb::_set_flag() {
   local name=$1 val=$2 label=$3
-  if [[ ${_CB_F_TYPE[$name]} == int && ! $val =~ ^-?[0-9]+$ ]]; then
-    cb::_parse_err "$label expects an integer (got '$val')"
+  if [[ ${_CB_F_TYPE[$name]} == int ]]; then
+    cb::int_canon "$val" || cb::_parse_err "$label expects an integer (got '$val')"
+    val=$REPLY
   fi
   cb::choice_ok F "$name" "$val" || cb::_choice_err "$label" "$val"
   _CB_VAL[$name]=$val
@@ -73,6 +74,7 @@ cb::parse() {
         if [[ $name == *=* ]]; then
           val=${name#*=} name=${name%%=*} has=1
         fi
+        [[ -n $name ]] || cb::_parse_err "unknown option '$a'"
         if [[ -z ${_CB_F_TYPE[$name]+x} ]]; then
           if [[ $name == no-* && ${_CB_F_TYPE[${name#no-}]:-} == bool ]] && ((!has)); then
             _CB_VAL[${name#no-}]=0
