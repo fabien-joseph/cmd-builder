@@ -931,7 +931,11 @@ check "install: replaced file kept as .bak"   "_CB_TTY='$TMP/yes' bash '$TMP/app
 _CB_TTY=$TMP/yes bash "$TMP/app/init.sh" --uninstall zz >/dev/null 2>&1
 rm -f "$HOME/.local/bin/zz.bak"
 : >"$HOME/.bashrc" && chmod 444 "$HOME/.bashrc"
-check "install: unwritable rc reported"       "_CB_TTY='$TMP/yes' SHELL=/bin/bash bash '$TMP/app/init.sh' zz 2>&1 | grep -c 'added to'" "0"
+if ((EUID)); then # root writes read-only files
+  check "install: unwritable rc reported"     "_CB_TTY='$TMP/yes' SHELL=/bin/bash bash '$TMP/app/init.sh' zz 2>&1 | grep -c 'added to'" "0"
+else
+  skipped "install: unwritable rc reported (running as root)"
+fi
 chmod 644 "$HOME/.bashrc" && _CB_TTY=$TMP/yes bash "$TMP/app/init.sh" --uninstall zz >/dev/null 2>&1 && rm -f "$HOME/.bashrc" "$TMP/yes"
 # Environment that must not change the framework.
 check "env: POSIX-mode Bash"                  "bash --posix '$TMP/home/bin/tt' self plugins" "core:system"
