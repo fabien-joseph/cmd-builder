@@ -267,10 +267,11 @@ arg() {
   done
   cb::_spec_choice_check "<$name>"
   [[ -n ${_CB_A_DESC[$name]+x} ]] && cb::_spec_err "argument '$name' is declared twice"
-  for last in "${_CB_ARGS[@]}"; do
-    [[ ${last//-/_} == "${name//-/_}" ]] && cb::_spec_err "'$name' and '$last' would both be ARG_${name//-/_}: rename one"
-  done
+  # Guarded by the count: under a "set -u" of flags.sh, Bash < 4.4 calls an empty "${a[@]}" unbound.
   if ((${#_CB_ARGS[@]})); then
+    for last in "${_CB_ARGS[@]}"; do
+      [[ ${last//-/_} == "${name//-/_}" ]] && cb::_spec_err "'$name' and '$last' would both be ARG_${name//-/_}: rename one"
+    done
     last=${_CB_ARGS[-1]}
     [[ -n ${_CB_A_VAR[$last]} ]] && cb::_spec_err "'$last' is variadic: it must be the last argument"
     [[ -n ${_CB_A_OPT[$last]} && -z $opt ]] && cb::_spec_err "'$name' is required but follows an optional argument"
