@@ -28,7 +28,10 @@ unset _cb_self _cb_dir
 CB_NAME=${0##*/}
 [[ $CB_NAME == main.sh ]] && CB_NAME=cmd-builder
 CB_CONFIG_DIR=${XDG_CONFIG_HOME:-$HOME/.config}/$CB_NAME
-export CB_ROOT CB_NAME CB_CONFIG_DIR
+# Version of cmd-builder and of its plugin contract (VERSION, CHANGELOG.md).
+CB_VERSION=unknown
+[[ -r $CB_ROOT/VERSION ]] && read -r CB_VERSION <"$CB_ROOT/VERSION"
+export CB_ROOT CB_NAME CB_CONFIG_DIR CB_VERSION
 
 unset _CB_NO_DYNAMIC # internal (self doctor): never taken from the environment
 source "$CB_ROOT/lib/core.sh"

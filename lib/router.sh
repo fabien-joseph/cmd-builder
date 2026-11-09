@@ -18,6 +18,10 @@ cb::main() {
       cb::help_root
       return 0
       ;;
+    --version)
+      printf '%s (cmd-builder) %s\n' "$CB_NAME" "${CB_VERSION:-unknown}"
+      return 0
+      ;;
     -*)
       ui::error "unknown option '$1'"
       printf "See '%s --help'.\n" "$CB_NAME" >&2

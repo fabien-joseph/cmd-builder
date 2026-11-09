@@ -10,7 +10,7 @@
 ## Bash
 
 - Target **Bash ≥ 4.2** (decision 0008). Allowed: associative arrays, `mapfile`, `${var,,}` / `${var^^}`,
-  `declare -g`, negative subscripts `${a[-1]}`. Not allowed: Bash 5-only features (`${var@U}`, `EPOCHSECONDS`, `wait -p`…).
+  `declare -g` at the top level of a file only, negative subscripts `${a[-1]}`. Not allowed: Bash 5-only features (`${var@U}`, `EPOCHSECONDS`, `wait -p`…).
 - **No external dependencies** beyond POSIX tools available on Linux and macOS. Avoid
   GNU-only flags: no `readlink -f` (use `cb::realpath`), no `sed -i` (write a temp file then
   `mv`), no `grep -P`, no `date -d`. When a GNU/BSD difference is unavoidable, try GNU then

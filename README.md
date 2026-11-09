@@ -117,98 +117,31 @@ mu self guide -o ~/mu-guide.md   # your setup, your commands and the full refere
 mu self guide --no-commands      # without the list of your commands
 ```
 
-### `flags.sh`
+### `flags.sh` and `cmd.sh`
 
 ```bash
-about       "Restore a database"                   # summary (--help, lists, completion)
-description "Longer text shown in --help"
-
-#    name    short type    description            options
-flag verbose -v    bool    "Verbose mode"
-flag output  -o    string  "Output file"          --default "-"
-flag level         int     "Level"                --choices "1 2 3" --default 1
-flag token         string  "Access token"         --required
-
-#   name    description                options
-arg db      "Database to restore"      --choices "prod staging"
-arg files   "Files to import"          --optional --variadic
-
-example "backup db restore prod dump.sql" "Restore prod"
+# plugins/backup/db/restore/flags.sh: declarations (--help, parsing and Tab come from it)
+about "Restore a database"
+flag verbose -v bool   "Verbose mode"
+flag jobs    -j int    "Parallel jobs"    --default 2
+arg  db         "Database to restore"     --choices "prod staging"
+arg  branch     "Branch"                  --choices-from "git branch --format='%(refname:short)'"
+example "backup db restore prod -j 4" "Restore prod with 4 jobs"
 ```
 
-Everything is optional (even `flags.sh` itself), except the fields of the lines you write:
-`flag` needs a name, a type and a description, `arg` a name and a description, and their
-options come after the description. An `arg` is required unless `--optional`.
-See [docs/plugin-authoring.md](docs/plugin-authoring.md) for the complete reference.
-
-| `flag` option | Effect |
-|---|---|
-| `bool` / `string` / `int` | type (an `int` is validated) |
-| `--default v` | default value (`0` or `1` for a bool) |
-| `--required` | mandatory option |
-| `--choices "a b"` | allowed values, offered by completion |
-| `--choices-from "cmd"` | values computed on the fly (see below) |
-| `--strict` | with `--choices-from`: rejects values outside the list |
-
-| `arg` option | Effect |
-|---|---|
-| `--optional` | may be omitted (required ones come first) |
-| `--variadic` | takes all remaining arguments (always the last one) |
-| `--choices "a b"` | allowed values |
-| `--choices-from "cmd"` / `--strict` | same as for `flag` |
-
-#### Dynamic choices: `--choices-from`
-
-When the list depends on the machine or the moment (git branches, containers, files…), give
-a command instead of a fixed list. It runs at each <kbd>Tab</kbd> and must print one value
-per line, optionally followed by a tab and a description:
-
 ```bash
-# an external command, run in the user's current directory
-arg branch "Branch to deploy" --choices-from "git branch --format='%(refname:short)'"
-
-# or a function defined in the flags.sh itself
-_containers() { docker ps --format '{{.Names}}\t{{.Image}}'; }
-flag container -c string "Container" --choices-from _containers --strict
-
-# or a script of the plugin
-arg host "Server" --choices-from '"$CB_COMMAND_DIR/_hosts.sh"'
-```
-
-- By default, values are only **suggested**: any other value is still accepted (useful for
-  a remote branch not fetched yet, for example).
-- With `--strict`, the typed value is **validated** against the list (the command then also
-  runs at launch).
-- The command must be fast (it runs at each <kbd>Tab</kbd>); its errors are ignored.
-- Available variables: `CB_NAME`, `CB_ROOT`, `CB_CONFIG_DIR`, `CB_COMMAND_DIR`, `CB_PLUGIN_ROOT`.
-
-Parsing accepts `--name`, `--name=val`, `--name val`, `--no-name`, `-x`, `-x val`, `-xval`,
-`-abc` (grouped bools), `--` (end of options); options may be placed anywhere after the
-subcommand names (`mu backup restore -v`, not `mu backup -v restore`).
-`-h` / `--help` are reserved.
-
-### `cmd.sh`
-
-```bash
-[[ $FLAG_VERBOSE == 1 ]] && ui::info "Restoring $ARG_DB to $FLAG_OUTPUT"
+# plugins/backup/db/restore/cmd.sh: the code, values in FLAG_* / ARG_* / "$@"
+[[ $FLAG_VERBOSE == 1 ]] && ui::info "Restoring $ARG_DB with $FLAG_JOBS jobs"
 ui::confirm "Overwrite $ARG_DB?" n || ui::die "cancelled"
-for f in "${@:2}"; do ...; done       # "$@" = all positional arguments
 ui::success "Done"
 ```
 
-| Variable | Content |
-|---|---|
-| `FLAG_<NAME>` | value of the option (`--dry-run` → `FLAG_DRY_RUN`, bool = `0`/`1`) |
-| `ARG_<NAME>` | value of the argument (variadic: values separated by spaces) |
-| `"$@"` | positional arguments, options removed |
-| `CB_NAME` | name of the root command (`mu`) |
-| `CB_COMMAND` | full command (`mu backup db restore`) |
-| `CB_COMMAND_DIR` / `CB_PLUGIN_ROOT` | directory of the command / of the plugin |
-| `CB_ROOT` / `CB_CONFIG_DIR` | cmd-builder root / `~/.config/mu` |
-
-Helpers: `ui::info`, `ui::success`, `ui::warn`, `ui::error` (on stderr), `ui::die "msg" [code]`,
-`ui::title`, `ui::confirm "Question?" [y|n]`, `ui::ask "Question" [default]`, `ui::select "Question" [-d default] option...` (arrow-key menu, pure Bash), and the colours
-`UI_BOLD`, `UI_GREEN`, `UI_RESET`… (disabled when `NO_COLOR` is set or when the output is not a terminal).
+The DSL (`about`, `description`, `flag`, `arg`, `example`, `requires`), the parsing rules, the
+variables (`FLAG_*`, `ARG_*`, `CB_NAME`, `CB_COMMAND`, `CB_COMMAND_DIR`, `CB_PLUGIN_ROOT`,
+`CB_ROOT`, `CB_CONFIG_DIR`, `CB_VERSION`) and the `ui::` helpers (`ui::confirm`, `ui::select`
+for menus without `fzf`…) are described in **[docs/plugin-authoring.md](docs/plugin-authoring.md)**,
+the single reference (also embedded in `mu self guide`). Changes of this contract are listed
+in [CHANGELOG.md](CHANGELOG.md).
 
 ## Plugins: official, personal and conflicts
 
@@ -217,23 +150,13 @@ Helpers: `ui::info`, `ui::success`, `ui::warn`, `ui::error` (on stderr), `ui::di
   each one can be its own git repository (`git clone … plugins/my-cmds`).
 - **Name conflict**: a personal plugin shadows the official plugin with the same name.
   `mu self doctor` and `mu self plugins` report it. To keep both, rename one in the config.
-- **Adding to an official plugin**: a directory `plugins/+<plugin>/` is an *extension*
-  (id `user:+<plugin>`): its subcommands are added to the official plugin, which keeps
-  its own commands. `mu self new system disk` creates it for you:
-  ```
-  plugins/+system/            extends core:system (no files of its own)
-  ├── disk/                   → mu system disk       (next to the official mu system info)
-  └── +net/                   extends the official group "mu system net"
-      └── trace/              → mu system net trace
-  ```
-  The `+` works at every level. A plain directory with the name of an official
-  subcommand (`plugins/+system/info/`) replaces it (reported, like a plugin conflict).
-  For a command of an extension, `CB_PLUGIN_ROOT` is `plugins/+system` (its own `_lib/`).
-  An extension follows its official plugin: renamed with it, inactive when it is
-  disabled, shadowed or missing (reported by `self doctor` and `self plugins`). It can be
-  disabled itself (`disable user:+system`), not renamed. Files at the root of an extension
-  (`plugins/+system/flags.sh`) are ignored and reported.
+- **Adding to an official plugin**: `plugins/+system/disk/` adds `mu system disk` next to
+  the official `mu system info` (an *extension*, id `user:+system`); `mu self new system disk`
+  creates it. Details in [docs/plugin-authoring.md](docs/plugin-authoring.md).
 - `self` is reserved for the root command.
+- **A plugin runs code as soon as it is installed**: its `flags.sh` is read at `mu --help`
+  and at every <kbd>Tab</kbd>, before you ever run it. Clone only plugins you trust, after
+  reading them.
 
 `~/.config/mu/config`:
 
@@ -244,6 +167,8 @@ package-manager apt                 # installs the tools your plugins need (repe
 ```
 
 ## Built-in commands
+
+`mu --version` prints the version of cmd-builder (also in `mu self doctor`).
 
 | Command | Role |
 |---|---|

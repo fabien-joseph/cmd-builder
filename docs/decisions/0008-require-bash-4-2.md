@@ -1,6 +1,6 @@
 # 0008. Require Bash ≥ 4.2
 
-- Status: Accepted
+- Status: Accepted (amended by 0011: `declare -g` only at the top level of a file)
 - Date: 2026-11-08
 - Amends: [0004](0004-require-bash-4.md) (the minimum version only; the rest still applies)
 
@@ -21,5 +21,6 @@ with the message "requires Bash >= 4.2".
   been end-of-life for years, and an easy rule to break again unnoticed.
 
 ## Consequences
-`declare -g` and negative subscripts are allowed (see `docs/conventions.md`). macOS users
+`declare -g` (at the top level of a file only: inside a function, Bash 4.2 does not create
+the global, decision 0011) and negative subscripts are allowed (see `docs/conventions.md`). macOS users
 still just `brew install bash` (5.x).

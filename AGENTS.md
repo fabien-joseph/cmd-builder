@@ -31,6 +31,7 @@ tests/run.sh         all tests: end-to-end + doc consistency checks (--docs: doc
 .github/workflows/   CI (GitHub Actions): Linux, macOS, Bash 4.2 / 4.1 (decision 0011)
 docs/                contributor documentation (English); plugin-authoring.md also ships in "self guide"
 README.md            user documentation
+CHANGELOG.md         changes of the plugin contract and of user-visible behaviour; VERSION holds the version
 ```
 
 ## Non-negotiable rules
@@ -77,6 +78,8 @@ Anything you create under `plugins/` while testing must be removed afterwards
 - [ ] CI is green on the pull request (Linux, macOS, Bash 4.2), see `docs/testing.md`.
 - [ ] New behaviour has tests.
 - [ ] Docs updated: `docs/` **and** `README.md` if users see the change.
+- [ ] Plugin contract or user-visible behaviour changed → a line in `CHANGELOG.md`; a new
+      release → bump `VERSION` (semantic versioning: breaking change = major).
 - [ ] Plugin contract or `self new` changed → the guide still reads well:
       `mu self guide` (built from `templates/ai-guide.md` + `docs/plugin-authoring.md`).
 - [ ] A new `docs/decisions/NNNN-*.md` exists if you made an architectural choice, and it is
@@ -90,7 +93,9 @@ You may have no memory of previous sessions (new tool, cleared context). Before 
 
 1. Read **[docs/handoff.md](docs/handoff.md)**: current state, work in progress, next steps,
    open questions. It is written for an agent with zero context.
-2. Run `git status --short` and `git log --oneline -10` to see what changed since.
+2. Sync with GitHub first, the owner may have merged since: `git fetch --prune`, then
+   `git switch main && git pull --ff-only` (or the branch named in the handoff). Then
+   `git status --short` and `git log --oneline -10` to see what changed since.
 3. Read the docs relevant to your task (table below).
 
 ## Session wrap-up — when the owner says "Fais le point"
@@ -114,7 +119,7 @@ lost**: the next agent (any tool, any model) must be able to continue from the f
    |---|---|
    | `lib/`, `main.sh`, routing, globals, exit codes, completion, config, install layout | `docs/architecture.md` |
    | DSL, `FLAG_*` / `ARG_*` / `CB_*`, `ui::` helpers, plugin layout | `docs/plugin-authoring.md` **and** `README.md` |
-| How an AI should answer users, the worked example, `self new` | `templates/ai-guide.md` (output of `self guide`) |
+   | How an AI should answer users, the worked example, `self new` | `templates/ai-guide.md` (output of `self guide`) |
    | A coding rule, a portability constraint, a naming convention | `docs/conventions.md` |
    | Test infrastructure or how to test something | `docs/testing.md` |
    | A structural choice (taken *or* rejected, even only in discussion) | new `docs/decisions/NNNN-*.md` + index |

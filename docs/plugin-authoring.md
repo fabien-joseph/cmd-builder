@@ -2,7 +2,7 @@
 
 The contract between cmd-builder and the commands it runs. **This is a public API**:
 plugins written by users rely on it, so changes must stay backward compatible.
-(A user-facing summary lives in `README.md`; keep both in sync.)
+(`README.md` only gives a short tour and links here: this file is the single reference.)
 
 Everything between the `guide:begin` / `guide:end` markers below is also embedded, as is,
 in the guide printed by `mu self guide` (for AI assistants without access to the machine):
@@ -254,7 +254,8 @@ unless `-5` is a declared short flag. `-` alone is a positional.
 | `CB_COMMAND_DIR` | directory of the running command |
 | `CB_PLUGIN_ROOT` | directory of the top-level plugin (for a command of an extension: `plugins/+<plugin>`) |
 | `CB_ROOT` | cmd-builder checkout |
-| `CB_CONFIG_DIR` | `~/.config/<name>` |
+| `CB_CONFIG_DIR` | `$XDG_CONFIG_HOME/<name>`, by default `~/.config/<name>`: settings and data of the command (they follow `self rename`) |
+| `CB_VERSION` | version of cmd-builder (`1.0.0`, see `CHANGELOG.md` of the checkout) |
 
 `FLAG_*` / `ARG_*` inherited from a parent invocation are cleared, so nested calls
 (`mu a` calling `mu b`) do not leak values.
@@ -283,4 +284,23 @@ Messages go to stderr so stdout stays pipeable. Questions of `ui::confirm` / `ui
 
 Flags, args and `requires` declared on a command without `cmd.sh` (a pure router) are
 ignored: `self doctor` reports them.
+### Stability, exit codes, debugging
+
+- **Public** (kept compatible, changes listed in `CHANGELOG.md`): the DSL, `FLAG_*` /
+  `ARG_*` / `CB_*`, `"$@"`, the `ui::` helpers and `UI_*`, the layout, the exit codes
+  below. **Internal** (may change at any time): `cb::*` functions, `_CB_*` variables, files
+  of `lib/`, the `__complete` protocol. A plugin must not source `lib/` files.
+- Exit codes of the framework: `2` usage error (unknown option, invalid value...), `1` a
+  required tool is missing, `3` invalid `flags.sh`. Use `ui::die "..." 2` for a usage error
+  found by the command itself.
+- Debugging: `set -x` in `cmd.sh`, or `SHELLOPTS=xtrace mu x` for the whole run (`bash -x`
+  on `mu` does not follow into `cmd.sh`, a new process); `mu self doctor` checks every
+  `flags.sh` and example.
+
+### Plugins from someone else
+
+A plugin is code that runs on the machine with the user's rights, **before it is ever run**:
+its `flags.sh` is read at `mu --help`, at every <kbd>Tab</kbd>, and by `self doctor`, `self
+guide`, `self deps` and `self update`. Clone into `plugins/` only a plugin you trust, after
+reading it, as you would read a script before running it.
 <!-- guide:end -->

@@ -49,6 +49,7 @@ check_example() {
 }
 
 ui::title "Environment"
+ok "cmd-builder ${CB_VERSION:-unknown} ($CB_ROOT)"
 ok "Bash $BASH_VERSION"
 if command -v git >/dev/null; then ok "$(git --version)"; else wa "git not found (needed for self update)"; fi
 link=$(command -v "$CB_NAME" 2>/dev/null)

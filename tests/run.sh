@@ -128,6 +128,15 @@ doc_checks() {
     need "file $f" docs/architecture.md "\`$f\`"
   done
 
+  # Every framework global is described (families such as _CB_F_* by their prefix).
+  for v in $(grep -ohE '(^|[^_A-Za-z])_CB_[A-Z0-9_]+' lib/*.sh | grep -oE '_CB_[A-Z0-9_]+' | sort -u); do
+    if [[ $v =~ ^(_CB_F_|_CB_A_|_CB_RE_) ]] && grep -qF "\`${BASH_REMATCH[1]}*" docs/architecture.md; then
+      ((pass++))
+    else
+      need "global $v" docs/architecture.md "$v"
+    fi
+  done
+
   # Every decision record is indexed.
   for f in docs/decisions/[0-9][0-9][0-9][0-9]-*.md; do
     need "decision ${f##*/}" docs/decisions/README.md "(${f##*/})"
@@ -187,7 +196,7 @@ fi
 TMP=$(cd -P "$(mktemp -d)" && pwd)
 trap 'rm -rf "$TMP"' EXIT
 mkdir -p "$TMP/app" "$TMP/home/bin"
-cp -R "$ROOT"/{main.sh,init.sh,lib,builtin,core,templates} "$TMP/app/"
+cp -R "$ROOT"/{main.sh,init.sh,VERSION,lib,builtin,core,templates} "$TMP/app/"
 mkdir -p "$TMP/app/plugins" "$TMP/app/docs"
 cp "$ROOT/docs/plugin-authoring.md" "$TMP/app/docs/" # embedded by "self guide"
 ln -s "$TMP/app/main.sh" "$TMP/home/bin/tt"
@@ -960,6 +969,13 @@ rm -rf "$P/crlf"
 check "completion: guarded for Bash < 4"      "tt self completion bash | grep -c 'BASH_VERSINFO'" "1"
 check "completion: works with eval"           "bash -c 'eval \"\$(tt self completion bash)\"; type -t _cb_complete_tt'" "function"
 check "gitattributes: LF line endings"        "cat '$ROOT/.gitattributes'" "* text=auto eol=lf"
+
+# Version (review of 2026-11-09, batch 10)
+check_eq "version: --version"                 "tt --version" "tt (cmd-builder) $(cat "$ROOT/VERSION")"
+mkdir -p "$P/ver" && echo 'echo "v=$CB_VERSION"' >"$P/ver/cmd.sh"
+check_eq "version: seen by commands"          "tt ver" "v=$(cat "$ROOT/VERSION")"
+rm -rf "$P/ver"
+check "version: in the changelog"             "cat '$ROOT/CHANGELOG.md'" "## $(cat "$ROOT/VERSION") — "
 
 # Completion and performance (review of 2026-11-09, batch 9)
 mkdir -p "$P/files" "$TMP/w9" && touch "$TMP/w9/my notes.txt"

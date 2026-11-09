@@ -14,7 +14,7 @@ think it should change, write a new record that supersedes the old one (and mark
 | [0005](0005-values-as-environment-variables.md) | Parsed values passed as `FLAG_*` / `ARG_*` env vars to a fresh process | Accepted |
 | [0006](0006-dynamic-choices-not-strict-by-default.md) | `--choices-from` suggests only, `--strict` to validate | Accepted |
 | [0007](0007-idempotent-uninstall.md) | Uninstall in `init.sh`, as independent idempotent steps | Accepted (amended 2026-11-09) |
-| [0008](0008-require-bash-4-2.md) | Minimum Bash version raised to 4.2 (amends 0004) | Accepted |
+| [0008](0008-require-bash-4-2.md) | Minimum Bash version raised to 4.2 (amends 0004) | Accepted (amended by 0011) |
 | [0009](0009-overridable-prompt-input.md) | Prompts read `${_CB_TTY:-/dev/tty}`; tests set it to `/dev/null` | Accepted |
 | [0010](0010-ai-guide-built-from-the-docs.md) | `self guide` prints an AI guide built from a template + `plugin-authoring.md`, example run by tests | Accepted (amended 2026-11-09) |
 | [0011](0011-ci.md) | CI on GitHub Actions: Linux, macOS (Homebrew Bash), Bash 4.2 and the 4.1 guard in Docker | Accepted |

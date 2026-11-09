@@ -68,10 +68,10 @@ Plugin states: `active`, `disabled`, `reserved`, `shadowed:<id>`; for extensions
 
 | File | Responsibility |
 |---|---|
-| `lib/core.sh` | Sources all libs in order; sets defaults for `CB_ROOT`, `CB_NAME`, `CB_CONFIG_DIR` when sourced outside `main.sh` |
+| `lib/core.sh` | Sources the libs in order (not `install.sh` / `deps.sh`); sets defaults for `CB_ROOT`, `CB_NAME`, `CB_CONFIG_DIR` when sourced outside `main.sh` |
 | `lib/util.sh` | Generic helpers: `cb::realpath` (portable symlink resolution), name validation, command-dir detection, `cb::children` / `cb::is_child` / `cb::child_dir` (extension-aware), `cb::walk` (`dir<TAB>words`), `cb::plugin_root_of`, `cb::suggest`, `cb::dq` |
 | `lib/ui.sh` | Public `ui::` helpers and `UI_*` colours (also loaded into every `cmd.sh`); prompts read `${_CB_TTY:-/dev/tty}` (decision 0009) |
-| `lib/config.sh` | Reads/writes `$CB_CONFIG_DIR/config` (`disable`, `rename`); `cb::config_set_disabled` rewrites the file atomically |
+| `lib/config.sh` | Reads/writes `$CB_CONFIG_DIR/config` (`disable`, `rename`, `package-manager`); `cb::config_set_disabled` / `cb::config_set_package_managers` rewrite it through `cb::_config_rewrite` (atomic, mode kept, symlink target) |
 | `lib/plugins.sh` | Plugin discovery, disable/rename application, shadowing, extensions (`_CB_OVL`), `cb::plugin_dir` |
 | `lib/spec.sh` | The `flags.sh` DSL (`about`, `description`, `flag`, `arg`, `example`), spec state, static/dynamic choices (`cb::choices_of`, `cb::choice_ok`) |
 | `lib/help.sh` | Generated `--help` for a command (`cb::help`) and for the root (`cb::help_root`) |
@@ -102,10 +102,14 @@ functions (`name=()`): Bash 4.2 ignores `declare -g` for an assignment inside a 
 | `_CB_ARGS` + `_CB_A_*` (assoc. by arg name) | `arg` | `DESC`, `OPT`, `VAR`, `CHOICES`, `CHFROM`, `STRICT` |
 | `_CB_VAL`, `_CB_AVAL`, `_CB_POS` | `cb::parse` | parsed flag values, arg values, positionals |
 | `_CB_REQS` + `_CB_R_OPT`, `_CB_R_PKG` | `requires` | required tools; optional flag; `<manager>/<tool>` → package |
-| `_CB_PMS`, `_CB_PM_ALL` | `cb::config_load` | configured package managers; supported ones |
+| `_CB_PMS` | `cb::config_load` | configured package managers |
+| `_CB_PM_ALL` | `lib/config.sh` (constant) | supported package managers |
+| `_CB_ABOUTS` | `cb::abouts_of` | summaries of a list of commands |
+| `_CB_DIR`, `_CB_DISPLAY` | `cb::parse` | command being parsed (for errors) |
+| `_CB_CHOICES_LIST`, `_CB_TV_FLAG`, `_CB_OPT_SHIFT` | `cb::choice_ok`, `cb::_takes_value`, `cb::_spec_choice_opt` | out-parameters of these functions |
 | `_CB_DEP_TOOLS`, `_CB_DEP_REQ`, `_CB_DEP_USERS`, `_CB_DEP_PKG` | `cb::deps_collect` | tools of every active command |
 | `_CB_NO_DYNAMIC` | `self doctor` | when set, `cb::choice_ok` does not validate `--choices-from --strict` values (never taken from the environment: `main.sh` unsets it) |
-| `_CB_AZ`, `_CB_AN`, `_CB_RE_*` | `lib/util.sh` (constants) | name characters written out and the name patterns (no `[a-z]` range: locale-independent) |
+| `_CB_AZ`, `_CB_AZU`, `_CB_09`, `_CB_AN`, `_CB_RE_*` | `lib/util.sh` (constants) | name characters written out and the name patterns (no `[a-z]` range: locale-independent) |
 | `_CB_ROUTE_DIR`, `_CB_ROUTE_N` | `cb::descend` | directory reached by the routing, words consumed |
 
 ## Exit codes
