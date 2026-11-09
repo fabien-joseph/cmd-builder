@@ -36,8 +36,11 @@ cb::rc_broken() { cb::rc_has "$1" "$2" && ! grep -qF "$(cb::rc_end "$2")" "$1"; 
 cb::rc_block() {
   local name=$1 shell=$2 comp
   comp=$(cb::config_dir_of "$name")/completion.$shell
+  # Paths go between double quotes: a $, ` or " in HOME must stay literal (cb::dq).
+  local bin
+  bin=$(cb::dq "$_CB_BIN_DIR") comp=$(cb::dq "$comp")
   cb::rc_begin "$name"
-  printf '\ncase ":$PATH:" in *":%s:"*) ;; *) export PATH="%s:$PATH" ;; esac\n' "$_CB_BIN_DIR" "$_CB_BIN_DIR"
+  printf '\ncase ":$PATH:" in *":%s:"*) ;; *) export PATH="%s:$PATH" ;; esac\n' "$bin" "$bin"
   printf '[ -f "%s" ] && . "%s"\n' "$comp" "$comp"
   cb::rc_end "$name"
   printf '\n'
@@ -54,7 +57,7 @@ cb::rc_append() { # rc shell name
 # Returns 0 when rewritten, 2 when there was no block of <old>, 1 when the end marker is
 # missing: rewriting would drop the whole end of the file, so it is left untouched.
 cb::rc_replace() { # rc old [new shell]
-  local rc=$1 old=$2 new=${3:-} shell=${4:-bash} real tmp line begin end skip=0 pending=0
+  local rc=$1 old=$2 new=${3:-} shell=${4:-bash} real tmp line mark begin end skip=0 pending=0
   local -a out=() block=()
   [[ -e $rc ]] || return 2
   begin=$(cb::rc_begin "$old") end=$(cb::rc_end "$old")
@@ -65,11 +68,14 @@ cb::rc_replace() { # rc old [new shell]
   cb::rc_broken "$real" "$old" && return 1
   [[ -n $new ]] && mapfile -t block < <(cb::rc_block "$new" "$shell")
   while IFS= read -r line || [[ -n $line ]]; do
+    # Markers are recognised with a trailing CR (edited on Windows) or blanks around them.
+    mark=${line%$'\r'}
+    mark=${mark#"${mark%%[![:space:]]*}"} mark=${mark%"${mark##*[![:space:]]}"}
     if ((skip)); then
-      [[ $line == "$end" ]] && skip=0
+      [[ $mark == "$end" ]] && skip=0
       continue
     fi
-    if [[ $line == "$begin" ]]; then
+    if [[ $mark == "$begin" ]]; then
       skip=1
       if [[ -n $new ]]; then
         ((pending)) && out+=('') # keep the blank line before the block
@@ -84,8 +90,10 @@ cb::rc_replace() { # rc old [new shell]
   done <"$real"
   ((skip)) && return 1
   ((pending)) && out+=('')
+  # cp -p first: the temp file gets the mode of the rc file (POSIX, also BusyBox), and is
+  # never more readable than it, then its content is replaced.
+  cp -p -- "$real" "$tmp" || return 1
   if ((${#out[@]})); then printf '%s\n' "${out[@]}" >"$tmp"; else : >"$tmp"; fi
-  chmod --reference="$real" "$tmp" 2>/dev/null || chmod "$(stat -f %Lp "$real" 2>/dev/null || echo 644)" "$tmp"
   mv -f -- "$tmp" "$real"
 }
 

@@ -111,9 +111,10 @@ functions (`name=()`): Bash 4.2 ignores `declare -g` for an assignment inside a 
 | Code | Meaning | Where |
 |---|---|---|
 | 0 | success, or help displayed | everywhere |
-| 1 | generic failure (`ui::die` default) | commands, `self doctor` with errors, `init.sh --uninstall` that left an rc block in place, `self rename` refused, cancelled or incomplete, a command whose required tool is missing (`cb::_check_requires`, after parsing), `self deps install` that left a tool missing |
+| 1 | generic failure (`ui::die` default) | commands, `self doctor` with errors, `init.sh --uninstall` that left an rc block in place, `self rename` refused, cancelled, incomplete or stopped by a failed step, a command whose required tool is missing (`cb::_check_requires`, after parsing), `self deps install` that left a tool missing, `self update` when a repository could not be checked or updated, `init.sh` that could not create the link |
 | 2 | usage error: unknown command/option, invalid or missing value | `lib/parse.sh`, `lib/router.sh`, `init.sh` without a name |
-| 3 | invalid `flags.sh` (DSL error, reported as `file:line : message`) | `cb::_spec_err` |
+| 3 | invalid `flags.sh` (DSL error, reported as `file:line: message`) | `cb::_spec_err` |
+| 10 | updates are available | `self update --check` only |
 
 ## Completion protocol
 

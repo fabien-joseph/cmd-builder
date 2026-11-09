@@ -10,6 +10,10 @@ case ${BASH_VERSION:-} in
     exit 1
     ;;
 esac
+# Bash in POSIX mode ("sh init.sh" where sh is Bash) rejects the "cb::" function names; an
+# exported CDPATH would change what the "cd" below and in the libraries do.
+set +o posix
+unset CDPATH
 
 # Resolves the symlink to find the project root (without readlink -f).
 _cb_self=${BASH_SOURCE[0]}
@@ -26,5 +30,6 @@ CB_NAME=${0##*/}
 CB_CONFIG_DIR=${XDG_CONFIG_HOME:-$HOME/.config}/$CB_NAME
 export CB_ROOT CB_NAME CB_CONFIG_DIR
 
+unset _CB_NO_DYNAMIC # internal (self doctor): never taken from the environment
 source "$CB_ROOT/lib/core.sh"
 cb::main "$@"

@@ -889,6 +889,57 @@ check "deps: requires of a router ignored"      "tt self deps 2>&1 | grep -c cbn
 rm -rf "$P/grp"
 check "ui::select: default not an option"       "bash -c 'source \"\$0\"; ui::select Q -d foo a b; echo \$?' '$TMP/app/lib/ui.sh' 2>&1" $'the default \'foo\' is not one of the options\n1'
 
+# System commands robustness (review of 2026-11-09, batch 7)
+# self update against local repositories: exit codes, --check, failures reported.
+U=$TMP/upd G="git -c user.name=t -c user.email=t@t"
+echo y >"$TMP/yes"
+mkdir -p "$U" && cp -R "$TMP/app" "$U/src" && rm -rf "$U/src/plugins"/* && cp "$ROOT/plugins/README.md" "$U/src/plugins/"
+(cd "$U/src" && git init -q && $G add -A && $G commit -qm init) && git clone -q --bare "$U/src" "$U/core.git" && git clone -q "$U/core.git" "$U/inst"
+ln -s "$U/inst/main.sh" "$TMP/home/bin/uu"
+check "update: up to date = exit 0"           "status 'uu self update --check'" "0"
+git clone -q "$U/core.git" "$U/w" && echo '# x' >>"$U/w/core/system/flags.sh" && (cd "$U/w" && $G commit -qam "change $(printf '\033[2J')" && git push -q)
+check "update --check: updates = exit 10"     "status 'uu self update --check'" "10"
+check "update: subjects without escapes"      "uu self update --check 2>&1 | grep -c \$'\\033'" "0"
+check "update: no terminal = skipped, exit 0" "status 'uu self update'" "0"
+check "update: yes = updated"                 "_CB_TTY='$TMP/yes' uu self update" "1/1 repository(ies) updated."
+# A plugin whose remote has disappeared.
+mkdir -p "$U/p" && (cd "$U/p" && git init -q && $G commit -q --allow-empty -m i) && git clone -q --bare "$U/p" "$U/p.git" &&
+  git clone -q "$U/p.git" "$U/inst/plugins/broken" && rm -rf "$U/p.git"
+check "update: unreachable remote reported"   "uu self update" "1 repository(ies) could not be checked or updated"
+check "update: unreachable remote = exit 1"   "status 'uu self update'" "1"
+rm -rf "$U" "$TMP/home/bin/uu" "$TMP/yes"
+# rc files and config edited on Windows; paths that need quoting in the rc block.
+printf '%s\r\n' '# >>> cmd-builder: zz >>>' 'x=1' '# <<< cmd-builder: zz <<<' 'alias a=1' >"$HOME/.bashrc"
+check "uninstall: CRLF markers recognised"     "bash '$TMP/app/init.sh' --uninstall zz >/dev/null 2>&1; grep -c 'cmd-builder' '$HOME/.bashrc'" "0"
+rm -f "$HOME/.bashrc"
+check "rc block: paths escaped"               "bash -c 'source \"\$0/lib/core.sh\"; source \"\$0/lib/install.sh\"; HOME=/h/\\\$x; _CB_BIN_DIR=/h/\\\$x/bin; cb::rc_block zz bash' '$TMP/app' | grep -c 'h/\\\\\\\$x/bin:'" "1"
+cfg=$XDG_CONFIG_HOME/tt/config
+cp "$cfg" "$TMP/cfg.orig" && grep -v '^rename core:system\|^disable core:system' "$TMP/cfg.orig" >"$cfg"
+printf 'disable core:system\r\n' >>"$cfg"
+check "config: CRLF lines understood"         "tt system info -s" "unknown command 'system'"
+cp "$TMP/cfg.orig" "$cfg" && chmod 600 "$cfg"
+tt self plugins disable core:system >/dev/null 2>&1 && tt self plugins enable core:system >/dev/null 2>&1
+check "config: mode kept by a rewrite"        "ls -l '$cfg' | cut -c1-10" "-rw-------"
+mv "$TMP/cfg.orig" "$cfg"
+mkdir -p "$TMP/cfgdir/tt/config"
+check "config: a directory is reported"       "XDG_CONFIG_HOME='$TMP/cfgdir' tt self plugins disable core:system" "is not a regular file"
+rm -rf "$TMP/cfgdir"
+# init.sh: the user's own file kept, an rc file it cannot write reported.
+echo y >"$TMP/yes"
+mkdir -p "$HOME/.local/bin" && echo 'my script' >"$HOME/.local/bin/zz"
+check "install: replaced file kept as .bak"   "_CB_TTY='$TMP/yes' bash '$TMP/app/init.sh' zz >/dev/null 2>&1; cat '$HOME/.local/bin/zz.bak'" "my script"
+_CB_TTY=$TMP/yes bash "$TMP/app/init.sh" --uninstall zz >/dev/null 2>&1
+rm -f "$HOME/.local/bin/zz.bak"
+: >"$HOME/.bashrc" && chmod 444 "$HOME/.bashrc"
+check "install: unwritable rc reported"       "_CB_TTY='$TMP/yes' SHELL=/bin/bash bash '$TMP/app/init.sh' zz 2>&1 | grep -c 'added to'" "0"
+chmod 644 "$HOME/.bashrc" && _CB_TTY=$TMP/yes bash "$TMP/app/init.sh" --uninstall zz >/dev/null 2>&1 && rm -f "$HOME/.bashrc" "$TMP/yes"
+# Environment that must not change the framework.
+check "env: POSIX-mode Bash"                  "bash --posix '$TMP/home/bin/tt' self plugins" "core:system"
+check "env: exported CDPATH"                  "cd '$TMP' && CDPATH=/ bash ./app/main.sh system info --help" "Show a summary of the system"
+mkdir -p "$P/strict" && printf '%s\n' 'flag env string "E" --choices-from "echo dev" --strict' >"$P/strict/flags.sh" && echo 'echo "env=$FLAG_ENV"' >"$P/strict/cmd.sh"
+check "env: _CB_NO_DYNAMIC not taken from it" "_CB_NO_DYNAMIC=1 tt strict --env prod" "invalid value 'prod'"
+rm -rf "$P/strict"
+
 # Behaviours no check covered (surviving mutants of the review of 2026-11-09, docs/testing.md)
 check "parse: --no-x only for bools"            "tt demo greet --no-key -k K Bob" "unknown option '--no-key'"
 check "parse: a bool takes no value"            "tt demo greet --loud=1 -k K Bob" "--loud does not take a value"

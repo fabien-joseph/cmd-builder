@@ -20,6 +20,7 @@ cb::config_load() {
   [[ -f $f ]] || return 0
   while IFS= read -r line || [[ -n $line ]]; do
     ((n++))
+    line=${line%$'\r'} # a config edited on Windows (WSL): CRLF line endings
     kw= a= b= extra=
     read -r kw a b extra <<<"${line%%#*}"
     [[ -z $kw ]] && continue
@@ -56,6 +57,7 @@ cb::config_load() {
 cb::config_ensure() {
   local f=$CB_CONFIG_DIR/config
   mkdir -p "$CB_CONFIG_DIR"
+  [[ -e $f && ! -f $f ]] && ui::die "$f exists but is not a regular file: fix or remove it"
   [[ -f $f ]] && return 0
   cat >"$f" <<EOF
 # Configuration of "$CB_NAME" (cmd-builder)
@@ -74,6 +76,17 @@ cb::config_ensure() {
 EOF
 }
 
+# Rewrites the config file with the given lines, atomically (temp file + mv). A symlinked
+# config (dotfiles) gets its target rewritten, the link stays. The mode is kept (a chmod 600
+# config stays private): the temp file is a copy (cp -p) whose content is then replaced.
+cb::_config_rewrite() { # line...
+  local f=$CB_CONFIG_DIR/config
+  f=$(cb::realpath "$f") || f=$CB_CONFIG_DIR/config
+  [[ -f $f ]] || ui::die "$f is not a regular file: fix or remove it, then run the command again"
+  cp -p -- "$f" "$f.tmp" 2>/dev/null && printf '%s\n' "$@" >"$f.tmp" && mv -f -- "$f.tmp" "$f" ||
+    ui::die "cannot rewrite $f (permissions? disk full?): nothing was changed"
+}
+
 # Enables (0) or disables (1) a plugin in the config file.
 cb::config_set_disabled() {
   local id=$1 on=$2 f=$CB_CONFIG_DIR/config line kw a rest
@@ -86,9 +99,7 @@ cb::config_set_disabled() {
     out+=("$line")
   done <"$f"
   ((on)) && out+=("disable $id")
-  # If the config is a symlink (dotfiles), rewrite its target instead of replacing the link.
-  f=$(cb::realpath "$f") || f=$CB_CONFIG_DIR/config
-  printf '%s\n' "${out[@]}" >"$f.tmp" && mv "$f.tmp" "$f"
+  cb::_config_rewrite "${out[@]}"
 }
 
 # Replaces the package-manager lines of the config file by the given managers, in order.
@@ -103,7 +114,6 @@ cb::config_set_package_managers() {
     out+=("$line")
   done <"$f"
   for pm; do out+=("package-manager $pm"); done
-  f=$(cb::realpath "$f") || f=$CB_CONFIG_DIR/config
-  printf '%s\n' "${out[@]}" >"$f.tmp" && mv "$f.tmp" "$f"
+  cb::_config_rewrite "${out[@]}"
   _CB_PMS=("$@")
 }

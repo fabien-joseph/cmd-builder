@@ -59,7 +59,7 @@ batch, in this order (owner's choice, 2026-11-09):
    an option before a subcommand is an error, "Did you mean", symlink-loop guard).
 6. [x] DSL and `ui::` hardening (`int` canonical decimal, collisions, `requires` = executable in
    PATH, prompts on the terminal they read).
-7. [ ] System commands robustness (`self update` exit codes and re-exec, init/uninstall
+7. [x] System commands robustness (`self update` exit codes and re-exec, init/uninstall
    failure paths, config file mode, `CDPATH`, POSIX mode).
 8. [ ] Portability: locale-independent names, `.gitattributes`, CRLF detection, macOS login shells.
 9. [ ] Completion and performance (quoted candidates, root-name escaping, batch `about`, zsh `compinit`).

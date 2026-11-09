@@ -245,7 +245,7 @@ package-manager apt                 # installs the tools your plugins need (repe
 
 | Command | Role |
 |---|---|
-| `mu self update [--check]` | updates cmd-builder and every plugin that has a git repository: shows the new commits, asks for confirmation for each repository, then `git pull --ff-only` |
+| `mu self update [--check]` | updates cmd-builder and every plugin that has a git repository (exit code 1 if one could not be checked or updated; `--check` exits 10 when there are updates): shows the new commits, asks for confirmation for each repository, then `git pull --ff-only` |
 | `mu self new <path…>` | generates a command (`--core`, `--git`, `-a "summary"`) |
 | `mu self plugins` | lists plugins and their state |
 | `mu self plugins enable <plugin>` | re-enables a plugin (name or id, Tab offers the disabled plugins) |

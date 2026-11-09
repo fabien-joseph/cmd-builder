@@ -14,7 +14,13 @@
 - **No external dependencies** beyond POSIX tools available on Linux and macOS. Avoid
   GNU-only flags: no `readlink -f` (use `cb::realpath`), no `sed -i` (write a temp file then
   `mv`), no `grep -P`, no `date -d`. When a GNU/BSD difference is unavoidable, try GNU then
-  fall back to BSD (see `chmod --reference` / `stat -f` in `lib/install.sh`).
+  fall back to BSD, or prefer a POSIX way that keeps the behaviour everywhere: to keep the mode
+  of a rewritten file, `cp -p` it to the temp file first, then replace the content (see
+  `cb::rc_replace` and `cb::_config_rewrite`; `stat -f` means "file system" on GNU and BusyBox).
+- Never `[[ =~ ... ]]` with a `[a-z]` range or `${x^^}` on names without a fixed locale
+  (see the review of 2026-11-09, POR-05).
+- Under a `set -u` of a plugin file, Bash < 4.4 calls an empty `"${a[@]}"` unbound: guard
+  loops of the DSL functions with the count.
 - Shebang `#!/usr/bin/env bash` (picks Homebrew Bash on macOS). Entry scripts check the
   Bash version before using any Bash 4 syntax, with a `case` that `sh` can parse.
 - Bash 4.2: never `declare -g` inside a function (`declare -gA name=()` there does not

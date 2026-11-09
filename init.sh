@@ -17,6 +17,10 @@ case ${BASH_VERSION:-} in
     exit 1
     ;;
 esac
+# Bash in POSIX mode ("sh init.sh" where sh is Bash) rejects the "cb::" function names; an
+# exported CDPATH would change what the "cd" below and in the libraries do.
+set +o posix
+unset CDPATH
 
 CB_ROOT=$(cd -P "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 mode=install
@@ -119,7 +123,8 @@ esac
 if [[ -e $link || -L $link ]]; then
   if [[ $(cb::realpath "$link") != "$target" ]]; then
     ui::warn "$link already exists and does not point to this cmd-builder"
-    ui::confirm "Replace it?" n || ui::die "installation cancelled"
+    ui::confirm "Replace it (it is kept as $link.bak)?" n || ui::die "installation cancelled"
+    mv -f -- "$link" "$link.bak" && ui::info "previous $link kept as $link.bak"
   fi
 elif existing=$(command -v "$CB_NAME" 2>/dev/null); then
   ui::warn "a command '$CB_NAME' already exists: $existing"
@@ -127,8 +132,8 @@ elif existing=$(command -v "$CB_NAME" 2>/dev/null); then
 fi
 
 chmod +x "$target" "$CB_ROOT/init.sh"
-mkdir -p "$bin_dir"
-ln -sfn "$target" "$link"
+mkdir -p "$bin_dir" && ln -sfn "$target" "$link"
+cb::link_is_ours "$link" || ui::die "cannot create $link (is $bin_dir a writable directory?)"
 ui::success "command installed: $link → $target"
 
 cb::config_ensure
@@ -143,12 +148,19 @@ ui::success "completion generated in $CB_CONFIG_DIR/"
 # rc file integration (PATH + completion), after confirmation.
 rc_block() {
   local shell=$1 rc=$2
+  if cb::rc_broken "$rc" "$CB_NAME"; then
+    ui::warn "$(cb::tilde "$rc"): '$rc_begin' found but not '$rc_end': fix or remove the block by hand, then run ./init.sh $CB_NAME again"
+    return 1
+  fi
   if cb::rc_has "$rc" "$CB_NAME"; then
     ui::info "already configured in $(cb::tilde "$rc")"
     return 0
   fi
   ui::confirm "Enable '$CB_NAME' completion in $(cb::tilde "$rc")?" y || return 1
-  cb::rc_append "$rc" "$shell" "$CB_NAME"
+  if ! cb::rc_append "$rc" "$shell" "$CB_NAME" 2>/dev/null || ! cb::rc_has "$rc" "$CB_NAME"; then
+    ui::warn "cannot write $(cb::tilde "$rc"): add the block by hand ('$CB_NAME self completion $shell' prints the completion)"
+    return 1
+  fi
   ui::success "added to $(cb::tilde "$rc")"
 }
 

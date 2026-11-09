@@ -37,7 +37,7 @@ _deps_run() { # install|update tool...
   ui::confirm "Run them?" y || ui::die "cancelled"
   for c in "${cmds[@]}"; do
     printf '%s$ %s%s\n' "$UI_DIM" "$c" "$UI_RESET"
-    eval "$c" || { ui::error "failed: $c"; failed=1; break; }
+    eval "$c" || { ui::error "failed: $c"; failed=1; } # the next ones may still work (another manager)
   done
   ((!failed && ${#none[@]} == 0))
 }

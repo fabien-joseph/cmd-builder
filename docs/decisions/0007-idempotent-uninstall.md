@@ -1,6 +1,6 @@
 # 0007. Uninstall in `init.sh`, as independent idempotent steps
 
-- Status: Accepted
+- Status: Accepted (amended 2026-11-09)
 - Date: 2026-11-08
 
 ## Context
@@ -19,6 +19,11 @@ broken or already half removed). Each step checks first whether it is already do
 3. remove config-dir files one by one (config only after confirmation), then the directory
    if empty.
 The checkout and user plugins are never removed.
+
+Amended 2026-11-09 (global review): markers are recognised with a CR or blanks around them
+(a Windows editor), the rewrite keeps the mode through `cp -p` (BusyBox has no
+`chmod --reference`), the configuration is removed only after an explicit yes (default no),
+and a configuration shared through `self rename --keep-old` moves to the other name.
 
 ## Alternatives considered
 - *`mu self uninstall`*: unusable once the symlink is gone, i.e. exactly when resuming an
