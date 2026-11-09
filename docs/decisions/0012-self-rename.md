@@ -1,6 +1,6 @@
 # 0012. `self rename`, with the install code shared with `init.sh`
 
-- Status: Accepted
+- Status: Accepted (amended 2026-11-09: user files of the config directory, failed steps, round trips)
 - Date: 2026-11-08
 
 ## Context
@@ -21,15 +21,22 @@ Changing the root name (`mu` → `xx`) used to mean `./init.sh xx` then
   config files existing with different contents, an rc block of the old name without its
   end marker.
 - **Steps in a resumable order**, each checking whether it is already done: new link;
-  config file moved (`mv`, so a dotfile symlink stays a symlink); completion regenerated for
+  config file and every other user file of the config directory moved (`mv`, so a dotfile
+  symlink stays a symlink; plugin data lives there too, see the review of 2026-11-09);
+  completion regenerated for
   the new name; in each rc file the old block replaced **in place** by the new one (one
   atomic rewrite, so there is never zero or two blocks); old config dir cleaned; **old link
   last**, so the old name keeps working, and the command can be run again, until the end.
+  A step that fails stops the command (exit 1) before the next one. A path is removed only
+  when it is a link to the moved file or an identical copy: never the only real file
+  (renaming back after `--keep-old` used to replace the config by a default one).
 - **`--keep-old`** (owner's choice): the old name stays installed (link, rc block,
   completion); the config moves to the new name and `~/.config/<old>/config` becomes a
   symlink to it, so both names share one config (`self plugins` already writes through
-  symlinks). `init.sh --uninstall <old>` then removes that link without asking: the target
-  belongs to the other name.
+  symlinks); the other files of the directory get a link each too. `init.sh --uninstall
+  <old>` then removes that link without asking: the target belongs to the other name.
+  Uninstalling the name that owns the file moves it onto the other name's link instead of
+  deleting it (amended 2026-11-09).
 
 ## Alternatives considered
 - *`./init.sh --rename <old> <new>`*: works even when the command is broken, but `self`

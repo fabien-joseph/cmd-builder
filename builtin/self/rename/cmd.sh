@@ -4,12 +4,17 @@ source "$CB_ROOT/lib/install.sh"
 old=$CB_NAME new=$ARG_NAME keep=$FLAG_KEEP_OLD
 old_link=$_CB_BIN_DIR/$old new_link=$_CB_BIN_DIR/$new
 old_dir=$CB_CONFIG_DIR new_dir=$(cb::config_dir_of "$new")
-oc=$old_dir/config nc=$new_dir/config
+nc=$new_dir/config
 mapfile -t rcs < <(cb::rc_files)
 mapfile -t shells < <(cb::rc_shells)
+# Everything of the user in the old config directory moves: the config file and the data of
+# plugins (the AI guide keeps plugin settings in $CB_CONFIG_DIR). Generated files do not.
+mapfile -t entries < <(cb::config_dir_entries "$old_dir")
 
-# True if both config files exist and are the same file (keep-old link, shared dotfile).
-same_config() { [[ -e $oc && -e $nc && $(cb::realpath "$oc") == "$(cb::realpath "$nc")" ]]; }
+# True if both paths exist and are the same file (a --keep-old link, a shared dotfile).
+same_file() { [[ -e $1 && -e $2 && $(cb::realpath "$1") == "$(cb::realpath "$2")" ]]; }
+# True if both are regular files (not links) with the same content: a copy already made.
+identical() { [[ -f $1 && ! -L $1 && -f $2 && ! -L $2 ]] && cmp -s -- "$1" "$2"; }
 
 # ---------------------------------------------------------------------------
 # Checks: nothing is changed until the confirmation.
@@ -27,8 +32,14 @@ cb::link_is_ours "$old_link" ||
 if [[ -e $new_link || -L $new_link ]] && ! cb::link_is_ours "$new_link"; then
   ui::die "$new_link already exists and is not a link to this cmd-builder: remove it, or choose another name"
 fi
-if [[ -e $oc && -e $nc ]] && ! same_config && ! cmp -s "$oc" "$nc"; then
-  ui::error "both $oc and $nc exist and differ"
+conflicts=()
+for e in "${entries[@]}"; do
+  d=$new_dir/$e
+  [[ -e $d || -L $d ]] || continue
+  same_file "$old_dir/$e" "$d" || identical "$old_dir/$e" "$d" || conflicts+=("$e")
+done
+if ((${#conflicts[@]})); then
+  ui::error "both $old_dir and $new_dir contain, with different contents: ${conflicts[*]}"
   ui::die "uninstall '$new' first (./init.sh --uninstall $new), or merge the two files by hand"
 fi
 for i in "${!rcs[@]}"; do
@@ -42,11 +53,14 @@ done
 ui::title "Rename '$old' to '$new'"
 if ((keep)); then
   printf '  %s: new link, %s kept\n' "$(cb::tilde "$new_link")" "$(cb::tilde "$old_link")"
-  printf '  %s: moved to %s, %s becomes a link to it\n' "$(cb::tilde "$oc")" "$(cb::tilde "$nc")" "$(cb::tilde "$oc")"
+  printf '  %s/: its files move to %s/, links to them are left in their place\n' "$(cb::tilde "$old_dir")" "$(cb::tilde "$new_dir")"
 else
   printf '  %s → %s\n' "$(cb::tilde "$old_link")" "$(cb::tilde "$new_link")"
   printf '  %s/ → %s/\n' "$(cb::tilde "$old_dir")" "$(cb::tilde "$new_dir")"
 fi
+others=()
+for e in "${entries[@]}"; do [[ $e == config ]] || others+=("$e"); done
+((${#others[@]})) && printf '  files of your plugins moved too: %s\n' "${others[*]}"
 for i in "${!rcs[@]}"; do
   cb::rc_has "${rcs[i]}" "$old" || continue
   if ((keep)); then
@@ -65,41 +79,56 @@ echo
 
 # ---------------------------------------------------------------------------
 # Steps, each one checking first whether it is already done: if the command is
-# interrupted, running it again finishes the job. The old link goes last, so the
-# old name keeps working until everything else is done.
+# interrupted, running it again finishes the job. A step that fails stops everything
+# (the old name keeps working); the old link goes last.
 # ---------------------------------------------------------------------------
+rerun="$old self rename $new"
+((keep)) && rerun+=" --keep-old"
+again="nothing after this step was done: fix it, then run '$rerun' again"
+
 # 1. The new link.
 if cb::link_is_ours "$new_link"; then
   ui::info "link $new_link: already there"
 else
-  mkdir -p "$_CB_BIN_DIR" && ln -sfn "$CB_ROOT/main.sh" "$new_link" &&
-    ui::success "command installed: $new_link → $CB_ROOT/main.sh"
+  mkdir -p "$_CB_BIN_DIR" && ln -sfn "$CB_ROOT/main.sh" "$new_link"
+  cb::link_is_ours "$new_link" || ui::die "cannot create $new_link; $again"
+  ui::success "command installed: $new_link → $CB_ROOT/main.sh"
 fi
 
-# 2. The configuration.
-mkdir -p "$new_dir"
-if [[ -L $oc ]] && same_config; then
-  if ((keep)); then
-    ui::info "$oc: already shared with '$new'"
-  else
-    rm -f -- "$oc" # a link to the new config (or to the same dotfile): nothing to move
+# 2. The configuration and the files of the plugins. A path is only removed when it is a
+# link to the moved file or an identical copy of it: never the only real file.
+mkdir -p "$new_dir" || ui::die "cannot create $new_dir; $again"
+for e in "${entries[@]}"; do
+  s=$old_dir/$e d=$new_dir/$e
+  if [[ -L $s ]] && same_file "$s" "$d"; then
+    ((keep)) || rm -f -- "$s" # a link to the moved file (or to the same dotfile): nothing to move
+    continue
   fi
-elif [[ -e $oc || -L $oc ]]; then
-  if [[ -e $nc || -L $nc ]]; then
-    rm -f -- "$oc" && ui::info "$nc: already moved" # identical copy (checked above)
-  else
-    mv -- "$oc" "$nc" && ui::success "configuration moved to $nc"
+  if [[ -e $d || -L $d ]]; then
+    if same_file "$s" "$d"; then
+      rm -f -- "$d" # a link to $s, left by an earlier --keep-old: the file comes back
+    else
+      rm -f -- "$s" && ui::info "$d: already moved" # identical copy (checked above)
+      continue
+    fi
   fi
-fi
+  mv -- "$s" "$d" || ui::die "cannot move $s to $d; $again"
+  ui::success "$s moved to $d"
+done
 if [[ ! -e $nc ]]; then
   (CB_NAME=$new CB_CONFIG_DIR=$new_dir cb::config_ensure) && ui::success "configuration: $nc"
 fi
-if ((keep)) && [[ ! -e $oc && ! -L $oc ]]; then
-  mkdir -p "$old_dir" && ln -s "$nc" "$oc" && ui::success "$oc → $nc"
+if ((keep)); then
+  for e in "${entries[@]}" config; do
+    [[ -e $old_dir/$e || -L $old_dir/$e || ! -e $new_dir/$e ]] && continue
+    mkdir -p "$old_dir" && ln -s "$new_dir/$e" "$old_dir/$e" && ui::success "$old_dir/$e → $new_dir/$e"
+  done
 fi
 
 # 3. Completion scripts for the new name.
-(CB_NAME=$new CB_CONFIG_DIR=$new_dir cb::completion_install) && ui::success "completion generated in $new_dir/"
+(CB_NAME=$new CB_CONFIG_DIR=$new_dir cb::completion_install) ||
+  ui::die "cannot write the completion scripts in $new_dir; $again"
+ui::success "completion generated in $new_dir/"
 
 # 4. rc files: the block of the new name replaces (or, with --keep-old, joins) the old one.
 incomplete=0 changed_rc=()

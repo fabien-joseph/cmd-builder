@@ -117,6 +117,30 @@ cb::config_dir_clean() {
   return 0
 }
 
+# Entries of a config directory that belong to the user (the config file, plugin data:
+# the AI guide stores plugin settings there), one name per line: all but generated files.
+cb::config_dir_entries() { # dir
+  local e n
+  for e in "$1"/* "$1"/.[!.]* "$1"/..?*; do
+    [[ -e $e || -L $e ]] || continue
+    n=${e##*/}
+    case $n in completion.bash | completion.zsh | config.tmp) continue ;; esac
+    printf '%s\n' "$n"
+  done
+}
+
+# Another root command's config that is a symlink to <file> ("self rename --keep-old"):
+# prints its path, returns 1 if there is none.
+cb::config_shared_with() { # file
+  local real l
+  real=$(cb::realpath "$1") || return 1
+  for l in "${XDG_CONFIG_HOME:-$HOME/.config}"/*/config; do
+    [[ -L $l && $l != "$1" ]] || continue
+    [[ $(cb::realpath "$l" 2>/dev/null) == "$real" ]] && printf '%s' "$l" && return 0
+  done
+  return 1
+}
+
 # Removes a config directory if it is empty, says so otherwise.
 cb::config_dir_remove() {
   if rmdir -- "$1" 2>/dev/null; then

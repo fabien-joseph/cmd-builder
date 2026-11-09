@@ -18,7 +18,7 @@ think it should change, write a new record that supersedes the old one (and mark
 | [0009](0009-overridable-prompt-input.md) | Prompts read `${_CB_TTY:-/dev/tty}`; tests set it to `/dev/null` | Accepted |
 | [0010](0010-ai-guide-built-from-the-docs.md) | `self guide` prints an AI guide built from a template + `plugin-authoring.md`, example run by tests | Accepted |
 | [0011](0011-ci.md) | CI on GitHub Actions: Linux, macOS (Homebrew Bash), Bash 4.2 and the 4.1 guard in Docker | Accepted |
-| [0012](0012-self-rename.md) | `self rename` (resumable, one confirmation, `--keep-old`); install code shared with `init.sh` in `lib/install.sh` | Accepted |
+| [0012](0012-self-rename.md) | `self rename` (resumable, one confirmation, `--keep-old`); install code shared with `init.sh` in `lib/install.sh` | Accepted (amended 2026-11-09) |
 | [0013](0013-extensions-of-official-plugins.md) | `plugins/+<plugin>/` adds commands to an official plugin (`+` at every level), inactive if it is not active | Accepted |
 | [0014](0014-plugin-dependencies.md) | User plugins declare tools with `requires`; `self deps` installs/updates them with the configured package managers only; `ui::select` | Accepted |
 

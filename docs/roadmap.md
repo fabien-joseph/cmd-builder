@@ -47,7 +47,7 @@ Keep this file current: move items to **Done** when shipped, add follow-ups you 
 The correction plan of the global review (section 6 of its report), one pull request per
 batch, in this order (owner's choice, 2026-11-09):
 
-1. [ ] Data safety: `self rename` / uninstall config loss, failed steps reported as success,
+1. [x] Data safety: `self rename` / uninstall config loss, failed steps reported as success,
    plugin data left behind, tests writing into a real `.zshrc` (ROB-01..04, ROB-17, TST-02).
 2. [ ] Trustworthy tests: exact `check_eq` / `check_status` / `check_count`, surviving
    mutants killed, skipped checks counted, Bash 4.2 `safe.directory` (TST-01..06).

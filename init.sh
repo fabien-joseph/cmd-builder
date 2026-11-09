@@ -69,6 +69,7 @@ uninstall_rc() {
 
 # Step 3: the files of ~/.config/<name>, one by one, then the directory if empty.
 uninstall_config() {
+  local shared
   if [[ ! -d $CB_CONFIG_DIR ]]; then
     ui::info "$CB_CONFIG_DIR: already removed"
     return 0
@@ -79,8 +80,12 @@ uninstall_config() {
     local to
     to=$(readlink -- "$CB_CONFIG_DIR/config")
     rm -f -- "$CB_CONFIG_DIR/config" && ui::success "link $CB_CONFIG_DIR/config removed (its target $to is kept)"
+  elif shared=$(cb::config_shared_with "$CB_CONFIG_DIR/config"); then
+    # The other name ("self rename --keep-old") uses this file through a link: it gets the file.
+    rm -f -- "$shared" && mv -- "$CB_CONFIG_DIR/config" "$shared" &&
+      ui::success "configuration moved to $shared (it is shared with '$(basename -- "$(dirname -- "$shared")")')"
   elif [[ -e $CB_CONFIG_DIR/config ]]; then
-    if ui::confirm "Also remove your configuration ($CB_CONFIG_DIR/config)?" y; then
+    if ui::confirm "Also remove your configuration ($CB_CONFIG_DIR/config)?" n; then
       rm -f -- "$CB_CONFIG_DIR/config" && ui::success "$CB_CONFIG_DIR/config removed"
     else
       ui::info "configuration kept"

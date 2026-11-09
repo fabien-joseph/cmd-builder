@@ -154,6 +154,9 @@ mkdir -p "$TMP/app/plugins" "$TMP/app/docs"
 cp "$ROOT/docs/plugin-authoring.md" "$TMP/app/docs/" # embedded by "self guide"
 ln -s "$TMP/app/main.sh" "$TMP/home/bin/tt"
 export HOME=$TMP/home XDG_CONFIG_HOME=$TMP/home/.config PATH=$TMP/home/bin:$PATH NO_COLOR=1
+# The developer's environment must not reach the sandbox: ZDOTDIR would make init.sh write
+# into the real ~/.zshrc, CDPATH changes what "cd" in the scripts does.
+unset ZDOTDIR CDPATH
 # Prompts (ui::confirm, ui::ask) must never wait on the real terminal: they read _CB_TTY.
 export _CB_TTY=/dev/null
 
@@ -628,6 +631,36 @@ check "uninstall: shared config link removed, target kept" \
   "bash '$TMP/app/init.sh' --uninstall zz >/dev/null 2>&1; test ! -e '$CF/zz' && test -f '$CF/ww/config' && grep -c 'cmd-builder: zz' '$HOME/.bashrc'" "0"
 _CB_TTY=$TMP/yes bash "$TMP/app/init.sh" --uninstall ww >/dev/null 2>&1
 _CB_TTY=$TMP/yes bash "$TMP/app/init.sh" --uninstall yy >/dev/null 2>&1
+# Back to the old name after --keep-old: the config is moved back, never replaced by a default.
+rn_setup
+_CB_TTY=$TMP/yes rn ww --keep-old >/dev/null 2>&1
+check "rename back after --keep-old: done"     "_CB_TTY='$TMP/yes' SHELL=/bin/bash '$LB/ww' self rename zz" "the command is now 'zz'"
+check "rename back after --keep-old: config kept" "test ! -L '$CF/zz/config' && grep -c '^disable core:system' '$CF/zz/config'" "1"
+check "rename back after --keep-old: no link left" "test ! -e '$LB/ww' && test ! -e '$CF/ww' && echo clean" "clean"
+# The files of the plugins in the config directory move with it.
+rn_setup
+echo 'token=abc' >"$CF/zz/notes.txt"
+check "rename: plan lists plugin files"        "rn yy" "files of your plugins moved too: notes.txt"
+_CB_TTY=$TMP/yes rn yy >/dev/null 2>&1
+check "rename: plugin files moved"             "cat '$CF/yy/notes.txt'; test -e '$CF/zz' || echo old-dir-gone" $'token=abc\nold-dir-gone'
+rn_setup
+echo 'token=abc' >"$CF/zz/notes.txt"
+_CB_TTY=$TMP/yes rn ww --keep-old >/dev/null 2>&1
+check "rename --keep-old: plugin files shared" "readlink '$CF/zz/notes.txt'; cat '$CF/zz/notes.txt'" $'notes.txt\ntoken=abc'
+# Uninstalling the name that owns a shared config gives the file to the other name.
+check "uninstall: shared config given to the other name" \
+  "bash '$TMP/app/init.sh' --uninstall ww >/dev/null 2>&1; test ! -L '$CF/zz/config' && grep -c '^disable core:system' '$CF/zz/config'" "1"
+# A failed step stops the rename: the old name still works and nothing else changed.
+rn_setup
+mkdir -p "$TMP/lnfail" && printf '#!/bin/sh\necho "ln: failed" >&2\nexit 1\n' >"$TMP/lnfail/ln" && chmod +x "$TMP/lnfail/ln"
+check "rename: failed link = stop"             "_CB_TTY='$TMP/yes' PATH='$TMP/lnfail':\$PATH rn yy; echo \"status=\$?\"" "status=1"
+check "rename: failed link = old name kept"    "test -L '$LB/zz' && test ! -e '$CF/yy/config' && grep -c 'cmd-builder: zz' '$HOME/.bashrc'" "2"
+rm -rf "$TMP/lnfail"
+# The configuration is removed only after an explicit yes (the default is no).
+printf '\n' >"$TMP/enter"
+check "uninstall: Enter keeps the configuration" "_CB_TTY='$TMP/enter' bash '$TMP/app/init.sh' --uninstall zz; test -f '$CF/zz/config' && echo kept" "kept"
+rm -f "$TMP/enter"
+_CB_TTY=$TMP/yes bash "$TMP/app/init.sh" --uninstall zz >/dev/null 2>&1
 rm -rf "$LB" "$CF"/{zz,yy,ww} "$HOME/.bashrc" "$HOME/.zshrc" "$TMP/yes"
 
 # ui::select: keys read from _CB_TTY (arrows, j/k, numbers, Enter, Esc/q)

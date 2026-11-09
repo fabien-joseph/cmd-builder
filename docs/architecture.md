@@ -72,7 +72,7 @@ Plugin states: `active`, `disabled`, `reserved`, `shadowed:<id>`; for extensions
 | `lib/parse.sh` | Argument parser (`cb::parse`) and env export (`cb::export_values`) |
 | `lib/router.sh` | `cb::main` (entry), `cb::run` (spec → parse → exec), unknown-command errors |
 | `lib/complete.sh` | Shell-agnostic completion engine (`cb::complete`) and completion script generation |
-| `lib/install.sh` | Install helpers shared by `init.sh` and `self rename`: rc block markers, `cb::rc_block` / `cb::rc_append` / `cb::rc_replace` (atomic rewrite), `cb::link_is_ours` / `cb::link_remove`, config-dir cleanup, `cb::tilde`, `_CB_BIN_DIR`. Not loaded by `lib/core.sh` |
+| `lib/install.sh` | Install helpers shared by `init.sh` and `self rename`: rc block markers, `cb::rc_block` / `cb::rc_append` / `cb::rc_replace` (atomic rewrite), `cb::link_is_ours` / `cb::link_remove`, config-dir entries and cleanup (`cb::config_dir_entries`, `cb::config_shared_with`), `cb::tilde`, `_CB_BIN_DIR`. Not loaded by `lib/core.sh` |
 | `lib/deps.sh` | Plugin dependencies (decision 0014): `cb::pm_detect`, `cb::pm_ask` (`ui::select`, saved in the config), `cb::pm_for` / `cb::pm_package` / `cb::pm_commands` (install/update command lines per manager, `sudo` unless root, never for brew), `cb::deps_collect` (the `requires` of every active command into `_CB_DEP_*`). Not loaded by `lib/core.sh` |
 | `lib/run.sh` | Tiny launcher: loads `ui.sh`, then sources the target `cmd.sh` with the remaining args |
 
@@ -160,7 +160,7 @@ best examples of the framework in use. They source `lib/core.sh` to access inter
 | `self new` | scaffold a command path (`flags.sh` + `cmd.sh`), `--core`, `--git`, `--about`; below an official plugin not replaced by the user, writes into its extension `plugins/+<x>/` (`+<group>` for official groups); refuses an official command or plugin as the target |
 | `self plugins` | list plugins with id and state |
 | `self plugins enable` / `self plugins disable` | toggle a plugin in the config (name or id, dynamic completion) |
-| `self rename` | rename the root command: plan + one confirmation, then new link, config moved, completion regenerated, rc blocks replaced in place, old config dir and old link last; resumable; `--keep-old` keeps the old name with its config as a symlink (decision 0012) |
+| `self rename` | rename the root command: plan + one confirmation, then new link, config and plugin files of the config dir moved, completion regenerated, rc blocks replaced in place, old config dir and old link last; stops at the first failed step; resumable; `--keep-old` keeps the old name with links to the moved files (decision 0012) |
 | `self deps` | list the `requires` of every active command (state, package, users); `self deps install [--all]` / `self deps update`: commands per manager shown, one confirmation, then run (`_common.sh`); `self deps managers` lists configured / detected, `self deps managers add` / `self deps managers remove` rewrite the `package-manager` lines |
 | `self doctor` | check environment, link, completion files, config, conflicts, every `flags.sh`, and every `example` (routed from the root like `cb::main`, the plugin also accepted under its directory name, then `cb::parse` in a subshell with `_CB_NO_DYNAMIC=1`; warnings) |
 | `self completion` | print the bash or zsh completion script |
@@ -173,7 +173,7 @@ best examples of the framework in use. They source `lib/core.sh` to access inter
 | Path | Created by | Removed by `--uninstall` |
 |---|---|---|
 | `~/.local/bin/<name>` → `main.sh` | install | yes, only if it points to this checkout |
-| `~/.config/<name>/config` | install (`cb::config_ensure`), moved by `self rename` | after confirmation; without asking if it is a symlink (only the link goes) |
+| `~/.config/<name>/config` | install (`cb::config_ensure`), moved by `self rename` | after confirmation (default no); without asking if it is a symlink (only the link goes); moved onto another name's link when it is shared (`--keep-old`) |
 | `~/.config/<name>/completion.{bash,zsh}` | install, `self update` | yes |
 | block `# >>> cmd-builder: <name> >>>` … `<<<` in `~/.bashrc`, `~/.zshrc` | install, after confirmation | yes (atomic rewrite, follows symlinked rc files; refused with a warning if the end marker is missing) |
 

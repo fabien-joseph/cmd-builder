@@ -31,7 +31,7 @@ new terminal or run the `source ~/.bashrc` (or `~/.zshrc`) line it prints to get
 ```
 
 Removes the `~/.local/bin/mu` link (only if it points to this cmd-builder), the block added
-to `~/.bashrc` / `~/.zshrc`, the completion scripts and, after confirmation, the config.
+to `~/.bashrc` / `~/.zshrc`, the completion scripts and, after confirmation (default: no), the config.
 Each step is independent and checks whether it is already done: if the uninstall is
 interrupted halfway, run it again and it finishes the job. The cmd-builder directory and your
 plugins are left untouched.
@@ -56,15 +56,17 @@ mu self rename xx              # "mu" becomes "xx"
 mu self rename xx --keep-old   # "xx" is added, "mu" keeps working
 ```
 
-Moves the `~/.local/bin/mu` link, `~/.config/mu/` (your config is kept, the completion
-scripts are regenerated for the new name) and the `mu` blocks of `~/.bashrc` / `~/.zshrc`
+Moves the `~/.local/bin/mu` link, `~/.config/mu/` (your config and the files your plugins
+keep there; the completion scripts are regenerated for the new name) and the `mu` blocks of `~/.bashrc` / `~/.zshrc`
 (replaced in place). It shows the plan and asks one confirmation first. If it is
-interrupted, run the same command again and it finishes the job. It refuses, without
+interrupted, or a step fails (it then stops, the old name still works), run the same
+command again and it finishes the job. It refuses, without
 changing anything, if `~/.local/bin/xx` is not one of its links or if `~/.config/xx/config`
 already exists with a different content (uninstall `xx` first, or merge the files by hand).
 Scripts and aliases that call `mu` must then use `xx`, unless `--keep-old`: both names then
 work and share one config (`~/.config/mu/config` becomes a link to `~/.config/xx/config`;
-`./init.sh --uninstall mu` later removes only the link).
+`./init.sh --uninstall mu` later removes only the link, `./init.sh --uninstall xx` gives the
+file back to `mu`).
 
 ## Layout
 
