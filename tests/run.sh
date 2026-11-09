@@ -8,11 +8,19 @@ ROOT=$(cd -P "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 only_docs=0
 [[ ${1:-} == --docs ]] && only_docs=1
 
-pass=0 fail=0
-check() { # description, command, substring expected in the output (stdout+stderr)
-  local out
+pass=0 fail=0 skip=0
+# check <description> <command> <expected>: the expected text must appear in the output
+# (stdout+stderr). A purely numeric expectation (an exit status, a count) must be the whole
+# output, blanks aside: "2" does not accept "12" or "127", "0" does not accept "10".
+check() {
+  local out ok=0
   out=$(eval "$2" 2>&1)
-  if [[ $out == *"$3"* ]]; then
+  if [[ $3 =~ ^[0-9]+$ ]]; then
+    [[ ${out//[[:space:]]/} == "$3" ]] && ok=1
+  elif [[ $out == *"$3"* ]]; then
+    ok=1
+  fi
+  if ((ok)); then
     ((pass++))
   else
     ((fail++))
@@ -20,6 +28,19 @@ check() { # description, command, substring expected in the output (stdout+stder
   fi
 }
 status() { eval "$1" >/dev/null 2>&1; echo $?; }
+# check_eq <description> <command> <expected>: the output must be exactly the expected text.
+check_eq() {
+  local out
+  out=$(eval "$2" 2>&1)
+  if [[ $out == "$3" ]]; then
+    ((pass++))
+  else
+    ((fail++))
+    printf '✗ %s\n    command : %s\n    expected exactly: %s\n    got     : %s\n' "$1" "$2" "$3" "${out//$'\n'/$'\n'              }"
+  fi
+}
+# A check that cannot run here (no git checkout...) is counted, never silent.
+skipped() { ((skip++)); printf '~ skipped: %s\n' "$1"; }
 
 # need <fact description> <file> <literal text that must appear in the file>
 # (file relative to the repository, or absolute)
@@ -126,12 +147,16 @@ doc_checks() {
       ((fail++))
       printf '✗ docs: docs/handoff.md references unknown commit %s\n' "$sha"
     fi
+  else
+    skipped "docs/handoff.md commit check (not a git checkout, or git refuses it)"
   fi
   cd - >/dev/null || return 1
 }
 
 summary() {
-  printf '\n%d passed, %d failed\n' "$pass" "$fail"
+  printf '\n%d passed, %d failed' "$pass" "$fail"
+  ((skip)) && printf ', %d skipped' "$skip"
+  printf '\n'
   ((fail == 0))
 }
 
@@ -221,7 +246,7 @@ check "conflict reported"                  "tt self plugins"            "shadowe
 check "ambiguous name"                     "tt self plugins disable system" "ambiguous"
 check "disabling"                          "tt self plugins disable user:system" "disabled"
 check "core visible again"                 "tt system info -s"          "·"
-check "rename keeps the core plugin"       "tt self plugins enable user:system; echo 'rename core:system sys' >>\$XDG_CONFIG_HOME/tt/config; tt sys info -s" "·"
+check "rename keeps the core plugin"       "tt self plugins enable user:system; echo 'rename core:system sys' >>\"\$XDG_CONFIG_HOME/tt/config\"; tt sys info -s" "·"
 check "both coexist"                       "tt system"                  "mine"
 rm -rf "$P/system"
 
@@ -282,7 +307,7 @@ check "guide example: generated help"      "cat '$TMP/example.out'"    "name  Wh
 check "guide example: default output"      "grep -cx 'Hello, world!' '$TMP/example.out'" "1"
 check "guide example: flags output"        "grep -cx 'HELLO, ALICE!' '$TMP/example.out'" "1"
 check "guide example: parent described"    "tt --help"                 "Test commands"
-check "guide example: doctor is happy"     "tt self doctor | grep -c 'plugins/test'" "0"
+check "guide example: doctor is happy"     "tt self doctor 2>&1 | grep -c 'plugins/test'" "0"
 rm -rf "$P/test" "$TMP/example.sh" "$TMP/example.out"
 # The complete flags.sh example of the reference (as embedded in the guide) is valid, and
 # cmd.sh receives exactly the values it documents.
@@ -300,7 +325,7 @@ for v in DB DUMP TABLES; do n=ARG_$v; echo "$n=${!n}"; done
 echo "\$@=$*"
 X
 check "flags example: extracted"           "grep -c '^flag ' '$P/backup/db/restore/flags.sh'" "6"
-check "flags example: valid for doctor"    "tt self doctor | grep -c 'backup'" "0"
+check "flags example: valid for doctor"    "tt self doctor 2>&1 | grep -c 'backup'" "0"
 check "flags example: generated help"      "tt backup db restore --help" "--format <sql|csv>  Dump format (default: sql)"
 check "flags example: dynamic choices"     "tt __complete -- backup db restore --host ''" $'db1\tPrimary'
 check "flags example: documented values"   "tt backup db restore prod dump.sql users orders --token T -v | diff '$TMP/values.expected' - && echo same" "same"
@@ -319,7 +344,7 @@ rm -f "$TMP/g.md" "$TMP/yes"
 mv "$TMP/app/docs/plugin-authoring.md" "$TMP/pa.md"
 check "guide: missing reference"           "tt self guide"              "cannot read the reference"
 grep -v 'guide:begin' "$TMP/pa.md" >"$TMP/app/docs/plugin-authoring.md"
-check "guide: reference without markers"   "tt self guide | grep -c '^# Guide'" "0"
+check "guide: reference without markers"   "tt self guide 2>/dev/null | grep -c '^# Guide'" "0"
 mv "$TMP/pa.md" "$TMP/app/docs/plugin-authoring.md"
 rm -f "$G"
 
@@ -557,7 +582,7 @@ check "install: source hint for bash"          "SHELL=/bin/bash bash '$TMP/app/i
 printf '%s\n' "$zzblock" >"$HOME/.zshrc"
 check "install: source hint for the user's shell" "SHELL=/bin/zsh bash '$TMP/app/init.sh' zz" "source ~/.zshrc"
 rm -f "$HOME/.bashrc" "$HOME/.zshrc"
-check "install: no hint when no rc configured"  "SHELL=/bin/bash bash '$TMP/app/init.sh' zz | grep -c 'source '" "0"
+check "install: no hint when no rc configured"  "SHELL=/bin/bash bash '$TMP/app/init.sh' zz 2>&1 | grep -c 'source '" "0"
 bash "$TMP/app/init.sh" --uninstall zz >/dev/null 2>&1
 rm -f "$HOME/.bashrc" "$HOME/.zshrc"
 
@@ -573,7 +598,7 @@ rm -f "$HOME/.bashrc" "$HOME/.zshrc" "$TMP/yes"
 mkdir -p "$TMP/pmstub" && printf '#!/bin/sh\n' >"$TMP/pmstub/apt-get" && chmod +x "$TMP/pmstub/apt-get"
 check "install: package manager asked"         "PATH='$TMP/pmstub':\$PATH bash '$TMP/app/init.sh' zz" "Package manager for the tools your plugins need (detected: "
 check "install: package manager saved"         "grep -c '^package-manager ' '$XDG_CONFIG_HOME/zz/config'" "1"
-check "install: package manager asked once"    "PATH='$TMP/pmstub':\$PATH bash '$TMP/app/init.sh' zz | grep -c 'Package manager for'" "0"
+check "install: package manager asked once"    "PATH='$TMP/pmstub':\$PATH bash '$TMP/app/init.sh' zz 2>&1 | grep -c 'Package manager for'" "0"
 echo y >"$TMP/yes" && _CB_TTY=$TMP/yes bash "$TMP/app/init.sh" --uninstall zz >/dev/null 2>&1
 rm -rf "$TMP/pmstub" "$TMP/yes" "$HOME/.bashrc" "$HOME/.zshrc"
 
@@ -757,6 +782,55 @@ check "deps: package names quoted"             "pmc apt install 'a;b'" "apt-get 
 # Official plugins and built-in commands need no extra tool (rule 1).
 check "deps: no requires in core/ and builtin/" \
   "grep -rnE '^[[:space:]]*requires[[:space:]]' '$ROOT'/core '$ROOT'/builtin | wc -l" "0"
+
+# Behaviours no check covered (surviving mutants of the review of 2026-11-09, docs/testing.md)
+check "parse: --no-x only for bools"            "tt demo greet --no-key -k K Bob" "unknown option '--no-key'"
+check "parse: a bool takes no value"            "tt demo greet --loud=1 -k K Bob" "--loud does not take a value"
+mkdir -p "$P/one"
+echo 'arg first "First"' >"$P/one/flags.sh"
+echo 'echo "first=$ARG_FIRST ghost=${FLAG_GHOST-unset}/${ARG_GHOST-unset}"' >"$P/one/cmd.sh"
+check "parse: extra positional refused"         "tt one a b" "unexpected argument 'b'"
+check "parse: extra positional = exit 2"        "status 'tt one a b'" "2"
+check "env: inherited FLAG_/ARG_ cleared"       "FLAG_GHOST=x ARG_GHOST=y tt one a" "ghost=unset/unset"
+printf '%s\n' 'about "x"' '' 'flag x -h bool "X"' >"$P/one/flags.sh"
+check "spec: -h reserved, error on its line"    "tt one a" "flags.sh:3: -h is reserved for --help"
+check "spec: invalid flags.sh = exit 3"         "status 'tt one a'" "3"
+check "doctor: errors = exit 1"                 "status 'tt self doctor'" "1"
+rm -rf "$P/one"
+check "doctor: link of a clean install"         "tt self doctor" "✓ $TMP/home/bin/tt → $TMP/app/main.sh"
+check "router: unknown command = exit 2"        "status 'tt dem'" "2"
+check "router: unknown root option = exit 2"    "status 'tt --nope'" "2"
+check "help: required flags marked"             "tt demo greet --help" "Key (required)"
+cfg=$XDG_CONFIG_HOME/tt/config
+cp "$cfg" "$TMP/cfg.orig" && grep -v '^rename core:system' "$TMP/cfg.orig" >"$cfg" # official name "system"
+cp "$cfg" "$TMP/cfg.base"
+echo 'disable core:system # a comment' >>"$cfg"
+check "config: comments stripped"               "tt system info -s" "unknown command 'system'"
+check "config: comment is not a directive"      "tt self doctor 2>&1 | grep -c 'unknown directive'" "0"
+cp "$TMP/cfg.base" "$cfg"
+check "self new: \$ kept literally in about"    "tt self new costx -a 'cost \$HOME' >/dev/null 2>&1; tt costx --help | head -1" 'tt costx — cost $HOME'
+rm -rf "$P/costx"
+check "self new --core: in core/"               "tt self new zzcore --core >/dev/null 2>&1; test -f '$TMP/app/core/zzcore/cmd.sh' && echo core" "core"
+rm -rf "$TMP/app/core/zzcore"
+mkdir -p "$P/+system/info" "$P/+system/aaa"
+echo 'echo mine' >"$P/+system/info/cmd.sh" && echo 'echo aaa' >"$P/+system/aaa/cmd.sh"
+check "ext: merged children listed once"        "tt system --help | grep -c '^  info '" "1"
+rm -rf "$P/+system"
+mv "$TMP/cfg.orig" "$cfg" && rm -f "$TMP/cfg.base"
+check "completion: zsh adapter registered"      "tt self completion zsh | grep -c '^compdef _cb_complete_tt tt$'" "1"
+check "ui::ask: default without a terminal"     "bash -c 'source \"\$0\"; ui::ask Q dflt' '$TMP/app/lib/ui.sh' 2>/dev/null" "dflt"
+echo hello >"$TMP/answer"
+check_eq "ui::ask: the answer"                  "_CB_TTY='$TMP/answer' bash -c 'source \"\$0\"; ui::ask Q dflt' '$TMP/app/lib/ui.sh' 2>/dev/null" "hello"
+printf '9\n' >"$TMP/answer"
+check_eq "ui::select: a number out of range ignored" "_CB_TTY='$TMP/answer' bash -c 'source \"\$0\"; ui::select Q a b c' '$TMP/app/lib/ui.sh' 2>/dev/null" "a"
+printf 'q' >"$TMP/answer"
+check "ui::select: q = exit 1"                  "_CB_TTY='$TMP/answer' bash -c 'source \"\$0\"; ui::select Q a b; echo \$?' '$TMP/app/lib/ui.sh' 2>/dev/null" "1"
+rm -f "$TMP/answer"
+check_eq "deps: sudo unless root"               "pmc apt install a | head -n 1" "$( ((EUID)) && printf 'sudo ')apt-get update"
+check "init.sh: shell builtin refused"          "bash '$TMP/app/init.sh' cd; test -e '$HOME/.local/bin/cd' || echo nothing-created" $'shell keyword or builtin, choose another name\nnothing-created'
+printf '%s\n' '# >>> cmd-builder: zz >>>' 'x=1' '# <<< cmd-builder: zz <<<' >"$HOME/.bashrc" && chmod 600 "$HOME/.bashrc"
+check "uninstall: rc file mode kept"            "bash '$TMP/app/init.sh' --uninstall zz >/dev/null 2>&1; ls -l '$HOME/.bashrc' | cut -c1-10" "-rw-------"
+rm -f "$HOME/.bashrc"
 
 # Output symbols: none with an emoji variant (✔ ✖ ⚠…): some terminals (Windows Terminal)
 # draw those two columns wide, over the next character.

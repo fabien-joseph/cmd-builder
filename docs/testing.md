@@ -32,8 +32,22 @@ check "<description>" "<shell command>" "<expected substring of stdout+stderr>"
 ```
 
 - The command is run with `eval`, so pipes, `cd` and `;` work.
+- A text expectation is a substring of stdout+stderr. A **purely numeric** expectation (an exit
+  status, a count) must be the **whole** output, blanks aside: `"2"` does not accept `12` or
+  `127`, `"0"` does not accept `10` (the review of 2026-11-09 found 46 checks passing on
+  wrong values). Keep stderr out of a count, or into it on purpose: `tt self doctor 2>&1 | grep -c x`.
+- `check_eq "<description>" "<command>" "<exact output>"` compares the whole output.
 - To test an exit code: `check "…" "status 'tt demo greet'" "2"`.
-- To test absence: `check "…" "tt … | grep -c something" "0"`.
+- To test absence: `check "…" "tt … 2>&1 | grep -c something" "0"`.
+- A check that cannot run in the current environment calls `skipped "<what>"`: the summary
+  counts it (`N passed, 0 failed, 1 skipped`), so a silently skipped check shows.
+- The suite unsets `ZDOTDIR` and `CDPATH`: the developer's environment must never reach
+  the sandbox (`ZDOTDIR` made `init.sh` write into the real `~/.zshrc`). Do the same for any
+  new variable the code reads.
+- The shared config of `tt` accumulates lines (`rename core:system sys` stays after the
+  conflicts block): a check that relies on official names filters it first and restores it.
+- After a change, check that the new tests fail on the broken code: copy the project to a
+  temporary directory, break the line with `sed`, run that copy's `tests/run.sh` (mutation).
 - Create fixtures with heredocs under `$P` (the temp `plugins/`) and remove them at the end
   of your block so later tests are not affected.
 - Interactive prompts (`ui::confirm`, `ui::ask`) read `/dev/tty`, which exists when the
@@ -102,7 +116,9 @@ The `# Guide for AI assistants` block of the end-to-end suite generates the guid
 
 `.github/workflows/tests.yml` (decision 0011) runs on every push to `main` and every pull
 request: Linux, macOS with Homebrew Bash (both also under a pseudo-terminal), and Bash 4.2
-plus the Bash 4.1 guard in the official `bash:*` Docker images. Keep tests portable to BSD
+plus the Bash 4.1 guard in the official `bash:*` Docker images (with `git config --global
+--add safe.directory /w`: the bind-mounted checkout belongs to another uid, and git refused it,
+which silently skipped the `docs/handoff.md` commit check). Keep tests portable to BSD
 tools (macOS) and to BusyBox images with GNU tools added; the sandbox uses the physical
 path of `mktemp -d` because macOS returns `/var/...`, a symlink to `/private/var/...`.
 With `gh` installed: `gh run list`, `gh run watch`, `gh run view --log-failed`.
