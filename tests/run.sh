@@ -39,6 +39,19 @@ check_eq() {
     printf '✗ %s\n    command : %s\n    expected exactly: %s\n    got     : %s\n' "$1" "$2" "$3" "${out//$'\n'/$'\n'              }"
   fi
 }
+# with_timeout <seconds> <command...>: runs it, killed after the delay (no "timeout" on macOS).
+with_timeout() {
+  local s=$1 p k r
+  shift
+  "$@" &
+  p=$!
+  (sleep "$s" && kill -9 "$p" 2>/dev/null) &
+  k=$!
+  wait "$p"
+  r=$?
+  kill "$k" 2>/dev/null
+  return "$r"
+}
 # A check that cannot run here (no git checkout...) is counted, never silent.
 skipped() { ((skip++)); printf '~ skipped: %s\n' "$1"; }
 
@@ -835,7 +848,7 @@ check "route: option before a subcommand = exit 2" "status 'tt bk -v restore'" "
 check "route: '--' keeps a value with that name" "tt bk -v -- restore" "parent target=restore"
 check "route: did you mean after a command"    "tt self deps manager" "Did you mean: managers?"
 ln -s .. "$P/bk/restore/loop" && ln -s "$P/bk" "$P/bk/restore/back"
-check "walk: symlink loops do not hang doctor"  "timeout 20 tt self doctor >/dev/null 2>&1; echo \$?" "0"
+check "walk: symlink loops do not hang doctor"  "with_timeout 20 tt self doctor >/dev/null 2>&1; echo \$?" "0"
 rm -rf "$P/bk"
 cfg=$XDG_CONFIG_HOME/tt/config
 cp "$cfg" "$TMP/cfg.orig" && grep -v '^rename core:system\|^disable core:system' "$TMP/cfg.orig" >"$cfg"
