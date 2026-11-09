@@ -39,16 +39,35 @@ Keep this file current: move items to **Done** when shipped, add follow-ups you 
   `ui::select`, an arrow-key menu in pure Bash (no `fzf` needed).
 - `self guide [request]`: the request is appended at the end of the guide, to paste
   everything as a single message.
+- Global review (2026-11-09): 10 reviewers + an AI-guide evaluation; report, evidence and
+  the owner's answers in [docs/reviews/2026-11-09-global-review/](reviews/2026-11-09-global-review/README.md).
 
 ## Next
 
-Next step (2026-11-08):
+The correction plan of the global review (section 6 of its report), one pull request per
+batch, in this order (owner's choice, 2026-11-09):
 
-1. [ ] **Global review** of the project: a session where the agent acts as a software
-   architect leading sub-agents (owner's prompt, review only, report + correction plan
-   to validate before any change).
-2. [ ] Then agree with the owner on the order of the *Accepted* list below (and of the
-   review's correction plan).
+1. [ ] Data safety: `self rename` / uninstall config loss, failed steps reported as success,
+   plugin data left behind, tests writing into a real `.zshrc` (ROB-01..04, ROB-17, TST-02).
+2. [ ] Trustworthy tests: exact `check_eq` / `check_status` / `check_count`, surviving
+   mutants killed, skipped checks counted, Bash 4.2 `safe.directory` (TST-01..06).
+3. [ ] AI guide safety: unique heredoc delimiter, `self new ... &&` chain, safe "Try it",
+   distribution / package managers / config dir in Setup, WSL notes, no incentive to add
+   dependencies (`requires` when really needed).
+4. [ ] flags.sh isolation (in-process hardening) and `cmd.sh` started with `$0` = the command.
+5. [ ] One router shared by run, completion, doctor and `self new` (rename-aware `self new`,
+   an option before a subcommand is an error, "Did you mean", symlink-loop guard).
+6. [ ] DSL and `ui::` hardening (`int` canonical decimal, collisions, `requires` = executable in
+   PATH, prompts on the terminal they read).
+7. [ ] System commands robustness (`self update` exit codes and re-exec, init/uninstall
+   failure paths, config file mode, `CDPATH`, POSIX mode).
+8. [ ] Portability: locale-independent names, `.gitattributes`, CRLF detection, macOS login shells.
+9. [ ] Completion and performance (quoted candidates, root-name escaping, batch `about`, zsh `compinit`).
+10. [ ] Docs and versioning (trust model of plugins, amended decisions, README as a tour,
+    `--version` + CHANGELOG of contract changes) — before any DSL extension below.
+
+Then the Accepted list, in this order: `--choices-from` timeout, repeatable flags, opt-in
+inherited flags, aliases + hidden commands, zsh test, `self plugins install` (last).
 
 Accepted, not scheduled yet:
 
