@@ -1,6 +1,6 @@
 # 0010. `self guide`: a guide for AI assistants built from the docs
 
-- Status: Accepted
+- Status: Accepted (amended 2026-11-09: paste protocol, Setup rows, safe "Try it")
 - Date: 2026-11-08
 
 ## Context
@@ -58,6 +58,27 @@ Kept up to date by tests:
   markers) is installed and run: `cmd.sh` must receive exactly the values documented
   between the `flags-values` markers;
 - the markers must stay in `docs/plugin-authoring.md`.
+
+## Amendment (2026-11-09, global review)
+
+The review found that the paste format could destroy or run user code, and the guide's
+signature here was outdated (`mu self guide [request] [-o file] [--no-commands]`;
+extensions replaced the "another plugin name" advice, decision 0013). Now:
+
+- Delimiter `<<'CB_EOF'`, never `EOF`: a generated file with its own `EOF` heredoc ended
+  the paste early and the rest ran in the user's interactive shell.
+- Every file block of a new command starts with a guard on the placeholder written by
+  `self new` (`grep -q 'Hello from' '<cmd.sh>' &&`, `grep -q 'TODO: describe' ...` for a
+  new parent), `cmd.sh` last: when `self new` refuses an existing command, nothing is
+  overwritten. The user is told to stop on a line starting with ✗. A test pastes the worked
+  example again over an existing command.
+- "Try it" runs never change real data (`--dry-run`, `mktemp -d`, no `--yes`, nothing in
+  the home directory): an evaluated answer deleted a real note.
+- Setup gains the distribution (`/etc/os-release`), the configured package managers and the
+  absolute config directory; WSL gets a short note (Windows openers, clipboard, its own
+  read-only mounts in `df`). The owner's condition: the guide must not encourage extra
+  dependencies; a tool that is really needed is declared with `requires`.
+- The embedded reference's headings are one level below the guide's sections.
 
 ## Alternatives considered
 - *The guide in French or other languages* (roadmap idea): rejected by the owner, the

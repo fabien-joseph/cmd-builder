@@ -16,15 +16,21 @@ sub() {
   REPLY=$out$s
 }
 
-# The reference is the part of docs/plugin-authoring.md between the guide markers.
+# The reference is the part of docs/plugin-authoring.md between the guide markers. Its
+# headings go one level down, below the "Reference" section of the guide (code blocks kept).
 reference() {
-  local line in=0 found=0
+  local line in=0 found=0 code=0
   [[ -f $ref ]] || return 1
   while IFS= read -r line || [[ -n $line ]]; do
     case $line in
       '<!-- guide:begin -->') in=1 ;;
       '<!-- guide:end -->') ((in)) && found=1 in=0 ;;
-      *) ((in)) && printf '%s\n' "$line" ;;
+      *)
+        ((in)) || continue
+        [[ $line == '```'* ]] && code=$((1 - code))
+        ((!code)) && [[ $line == '#'* ]] && line=#$line
+        printf '%s\n' "$line"
+        ;;
     esac
   done <"$ref"
   ((found))
@@ -67,8 +73,26 @@ self_new_help() (
 
 # Kernel name and release; WSL kernels are named "...-microsoft-standard-WSL2".
 system=$(uname -sr 2>/dev/null) || system=unknown
-[[ $system == *[Mm]icrosoft* ]] && system+=" (WSL: Linux under Windows)"
+notes=
+if [[ $system == *[Mm]icrosoft* ]]; then
+  system+=" (WSL: Linux under Windows)"
+  notes="On WSL: open a file or a URL in Windows with \`wslview\` (package \`wslu\`, maybe missing) or
+\`explorer.exe\`; the Windows clipboard is \`clip.exe\`; Windows drives are under \`/mnt/<letter>/\`;
+\`df\` also lists WSL's own read-only mounts (\`/usr/lib/wsl\`, \`/mnt/wslg\`...), often at 100 %:
+leave them out of disk checks."
+fi
 [[ $(uname -s 2>/dev/null) == Darwin ]] && system+=" (macOS)"
+
+# Distribution: PRETTY_NAME of /etc/os-release (read, not sourced), or the macOS version.
+distro=unknown
+if [[ -r /etc/os-release ]]; then
+  while IFS='=' read -r k v; do
+    [[ $k == PRETTY_NAME ]] && v=${v#\"} && distro=${v%\"}
+  done </etc/os-release
+elif [[ $(uname -s 2>/dev/null) == Darwin ]]; then
+  distro="macOS $(sw_vers -productVersion 2>/dev/null)"
+fi
+pms=${_CB_PMS[*]:-none configured}
 
 refs=$(reference) ||ui::die "cannot read the reference: $ref (with its guide:begin/end markers)"
 list=$(commands)
@@ -81,11 +105,15 @@ guide() {
       __CB_REFERENCE__) printf '%s\n' "$refs" ;;
       __CB_COMMANDS__) printf '%s\n' "$list" ;;
       __CB_SELF_NEW_HELP__) printf '%s\n' "$help" ;;
+      __CB_SYSTEM_NOTES__) [[ -n $notes ]] && printf '\n%s\n' "$notes" ;;
       *)
         sub "$line" __CB_NAME__ "$CB_NAME"
         sub "$REPLY" __CB_ROOT__ "$CB_ROOT"
         sub "$REPLY" __CB_BASH__ "$BASH_VERSION"
         sub "$REPLY" __CB_SYSTEM__ "$system"
+        sub "$REPLY" __CB_DISTRO__ "$distro"
+        sub "$REPLY" __CB_PMS__ "$pms"
+        sub "$REPLY" __CB_CONFIG_DIR__ "$CB_CONFIG_DIR"
         printf '%s\n' "$REPLY"
         ;;
     esac

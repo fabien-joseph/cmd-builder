@@ -156,7 +156,12 @@ Since extensions and `requires` (decisions 0013, 0014), also check that the answ
 `plugins/+<plugin>/` paths for official plugins and declares extra tools with `requires`
 (plus a `self deps install` step), not `command -v ... || ui::die`.
 
-Requests worth keeping in the set: a destructive command (`git clean-branches`), a request
+Since the review of 2026-11-09, also check that the blocks use `<<'CB_EOF'` with their
+guards, that the "Try it" runs cannot change real data, and that WSL specifics are handled.
+
+Requests worth keeping in the set: a command that **already exists** (nothing may be
+overwritten), a request under a **renamed official plugin**, a command with a **heredoc in
+its own code**, a command that **deletes data** (notes: the try must use test data), a destructive command (`git clean-branches`), a request
 on an official plugin (`system disk`, which must not create `plugins/system/`), a vague
 request ("my backups"), an external tool (`docker`), decimal or negative values (the DSL
 has no float type), the editor format ("give me the file contents"), dynamic data stored in

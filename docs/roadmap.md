@@ -51,7 +51,7 @@ batch, in this order (owner's choice, 2026-11-09):
    plugin data left behind, tests writing into a real `.zshrc` (ROB-01..04, ROB-17, TST-02).
 2. [x] Trustworthy tests: exact `check_eq` / `check_status` / `check_count`, surviving
    mutants killed, skipped checks counted, Bash 4.2 `safe.directory` (TST-01..06).
-3. [ ] AI guide safety: unique heredoc delimiter, `self new ... &&` chain, safe "Try it",
+3. [x] AI guide safety: unique heredoc delimiter, `self new ... &&` chain, safe "Try it",
    distribution / package managers / config dir in Setup, WSL notes, no incentive to add
    dependencies (`requires` when really needed).
 4. [ ] flags.sh isolation (in-process hardening) and `cmd.sh` started with `$0` = the command.
