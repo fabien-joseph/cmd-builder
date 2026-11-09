@@ -148,7 +148,7 @@ doc_checks() {
       printf '✗ docs: docs/handoff.md references unknown commit %s\n' "$sha"
     fi
   else
-    skipped "docs/handoff.md commit check (not a git checkout, or git refuses it)"
+    skipped "docs/handoff.md commit check ($(git rev-parse --git-dir 2>&1 | head -n 1))"
   fi
   cd - >/dev/null || return 1
 }
