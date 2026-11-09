@@ -40,7 +40,7 @@ cb::choices_of() {
   local kind=$1 name=$2 static from c
   if [[ $kind == F ]]; then static=${_CB_F_CHOICES[$name]:-} from=${_CB_F_CHFROM[$name]:-}; else static=${_CB_A_CHOICES[$name]:-} from=${_CB_A_CHFROM[$name]:-}; fi
   if [[ -n $from ]]; then
-    (eval "$from") 2>/dev/null
+    (eval "$from") 2>/dev/null </dev/null # never the keys typed after Tab, nor the command's input
   else
     for c in $static; do printf '%s\t\n' "$c"; done
   fi
@@ -90,13 +90,22 @@ cb::_spec_choice_check() {
   return 0
 }
 
+# Loads the flags.sh of <dir>. It is plugin code run in the framework process, so what it
+# may change is put back afterwards: shell options (set -euo pipefail is a common habit),
+# failglob, IFS (local here), the current directory; what it prints goes to stderr, never
+# into the command's output or its --help. Its variables and functions stay (snippets of
+# --choices-from use them): callers must not keep unprefixed locals across this call
+# (review of 2026-11-09, PAR-01), see cb::run and cb::complete.
 cb::spec_load() {
   cb::spec_reset
-  local f=$1/flags.sh
+  local f=$1/flags.sh _cb_pwd=$PWD IFS=$' \t\n'
   [[ -f $f ]] || return 0
   _CB_SPEC_FILE=$f
   # shellcheck disable=SC1090
-  source "$f"
+  source "$f" >&2
+  set +o errexit +o nounset +o pipefail
+  shopt -u failglob
+  [[ $PWD == "$_cb_pwd" ]] || builtin cd -- "$_cb_pwd" >/dev/null 2>&1
   # The status of the file's last command is meaningless (e.g. "cmd && flag ..."):
   # DSL errors exit with code 3 through cb::_spec_err.
   return 0

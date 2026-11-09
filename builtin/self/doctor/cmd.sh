@@ -36,15 +36,17 @@ check_example() {
   done
   # In a subshell: the parser exits on the first error. Dynamic --strict choices are not
   # validated (their values depend on the machine).
+  # Copies with the reserved prefix: flags.sh may assign "dir" or "w" (see cb::spec_load).
+  _cb_dir=$dir _cb_w=("${w[@]}")
   (
     ui::error() { printf '%s\n' "$*" >&2; }
-    cb::spec_load "$dir" 2>/dev/null || exit 0 # an invalid flags.sh is reported elsewhere
-    if [[ -z $(cb::executable "$dir") ]]; then
-      ((${#w[@]} == 0)) || [[ ${w[0]} == -h || ${w[0]} == --help ]] || echo "unknown subcommand '${w[0]}'"
+    cb::spec_load "$_cb_dir" 2>/dev/null || exit 0 # an invalid flags.sh is reported elsewhere
+    if [[ -z $(cb::executable "$_cb_dir") ]]; then
+      ((${#_cb_w[@]} == 0)) || [[ ${_cb_w[0]} == -h || ${_cb_w[0]} == --help ]] || echo "unknown subcommand '${_cb_w[0]}'"
       exit 0
     fi
     _CB_NO_DYNAMIC=1
-    cb::parse "$dir" "x" "${w[@]}" 2>&1 >/dev/null | head -n 1
+    cb::parse "$_cb_dir" "x" "${_cb_w[@]}" 2>&1 >/dev/null | head -n 1
   ) 2>/dev/null
 }
 

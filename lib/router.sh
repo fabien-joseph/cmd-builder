@@ -69,9 +69,13 @@ cb::_check_requires() {
 
 # cb::run <dir> <plugin dir> <display> args...
 cb::run() {
+  # The spec is loaded before any local exists: assignments at the top of flags.sh then
+  # cannot overwrite them (they only reach the locals of cb::main, unused afterwards).
+  # CB_COMMAND* are exported first, so flags.sh and --choices-from --strict see them.
+  export CB_COMMAND=$3 CB_COMMAND_DIR=$1 CB_PLUGIN_ROOT=$2
+  cb::spec_load "$1"
   local dir=$1 top=$2 display=$3 exe s
   shift 3
-  cb::spec_load "$dir"
   exe=$(cb::executable "$dir")
 
   if [[ -z $exe ]]; then
@@ -91,13 +95,13 @@ cb::run() {
     exit 2
   fi
 
-  # Exported before parsing: --choices-from --strict snippets may use them.
-  export CB_COMMAND=$display CB_COMMAND_DIR=$dir CB_PLUGIN_ROOT=$top
   cb::parse "$dir" "$display" "$@"
   cb::_check_requires "$display"
   cb::export_values
   if [[ $exe == */cmd.sh ]]; then
-    exec "$BASH" "$CB_ROOT/lib/run.sh" "$exe" "${_CB_POS[@]}"
+    # A fresh Bash with the ui:: helpers, then cmd.sh sourced: "$0" is cmd.sh itself,
+    # "$@" the positionals, and a top-level "return" sets the exit code.
+    exec "$BASH" -c 'source "$CB_ROOT/lib/ui.sh" && source "$0"' "$exe" "${_CB_POS[@]}"
   else
     exec "$exe" "${_CB_POS[@]}"
   fi

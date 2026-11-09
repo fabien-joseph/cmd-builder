@@ -21,7 +21,8 @@ or `builtin/`. For the plugin-facing contract, see [plugin-authoring.md](plugin-
                                 │  5. cb::parse          validate argv against the spec
                                 │  6. cb::export_values  FLAG_* / ARG_* / CB_* env vars
                                 ▼
-                 exec bash lib/run.sh <dir>/cmd.sh "$@"     (or exec <dir>/cmd "$@")
+   exec bash -c 'source lib/ui.sh; source "$0"' <dir>/cmd.sh <positionals>
+                                         (or exec <dir>/cmd <positionals>)
 ```
 
 The command runs in a **fresh process** (`exec`): framework globals never leak into plugin
@@ -34,7 +35,7 @@ code, and plugins written in any language receive the same environment.
 (`cb::children`). Names must match `^[a-zA-Z0-9][a-zA-Z0-9_-]*$`, so `_lib/`, `.git/` etc.
 are ignored. A command without an executable is a pure *router*: it shows its help.
 
-**Executable.** `cmd.sh` (sourced by `lib/run.sh` so `ui::` helpers are available) wins over
+**Executable.** `cmd.sh` (sourced by a fresh `bash -c` that loads `lib/ui.sh` first, with `$0` = the `cmd.sh` path) wins over
 `cmd` (any executable file). See `cb::executable`.
 
 **Routing.** After the plugin name, words that name a child command are consumed greedily;
@@ -74,7 +75,6 @@ Plugin states: `active`, `disabled`, `reserved`, `shadowed:<id>`; for extensions
 | `lib/complete.sh` | Shell-agnostic completion engine (`cb::complete`) and completion script generation |
 | `lib/install.sh` | Install helpers shared by `init.sh` and `self rename`: rc block markers, `cb::rc_block` / `cb::rc_append` / `cb::rc_replace` (atomic rewrite), `cb::link_is_ours` / `cb::link_remove`, config-dir entries and cleanup (`cb::config_dir_entries`, `cb::config_shared_with`), `cb::tilde`, `_CB_BIN_DIR`. Not loaded by `lib/core.sh` |
 | `lib/deps.sh` | Plugin dependencies (decision 0014): `cb::pm_detect`, `cb::pm_ask` (`ui::select`, saved in the config), `cb::pm_for` / `cb::pm_package` / `cb::pm_commands` (install/update command lines per manager, `sudo` unless root, never for brew), `cb::deps_collect` (the `requires` of every active command into `_CB_DEP_*`). Not loaded by `lib/core.sh` |
-| `lib/run.sh` | Tiny launcher: loads `ui.sh`, then sources the target `cmd.sh` with the remaining args |
 
 ## Global state
 
@@ -128,6 +128,11 @@ glob them. `--flag=<TAB>` returns the flag's choices as full `--flag=value` word
 `-<digit>…` word counts as a positional (negative number), exactly as in `cb::parse`.
 `cb::spec_load` returns 0 whatever the last command of `flags.sh` returns: only DSL
 errors (exit 3) make a `flags.sh` invalid.
+`flags.sh` runs in the framework process: `cb::spec_load` sends its output to stderr and
+puts back shell options (`set -e`, `-u`, `pipefail`, `failglob`), `IFS` and the current
+directory. Its variables stay global for its `--choices-from` snippets, so a function that
+loads a spec must not keep unprefixed locals across the call: `cb::run` and
+`cb::_complete_at` load it before declaring theirs.
 
 `--choices-from` commands are evaluated with `eval` in a subshell, in the user's current
 directory, with `CB_COMMAND_DIR` / `CB_PLUGIN_ROOT` exported and the `flags.sh` functions

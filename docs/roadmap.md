@@ -54,7 +54,7 @@ batch, in this order (owner's choice, 2026-11-09):
 3. [x] AI guide safety: unique heredoc delimiter, `self new ... &&` chain, safe "Try it",
    distribution / package managers / config dir in Setup, WSL notes, no incentive to add
    dependencies (`requires` when really needed).
-4. [ ] flags.sh isolation (in-process hardening) and `cmd.sh` started with `$0` = the command.
+4. [x] flags.sh isolation (in-process hardening) and `cmd.sh` started with `$0` = the command.
 5. [ ] One router shared by run, completion, doctor and `self new` (rename-aware `self new`,
    an option before a subcommand is an error, "Did you mean", symlink-loop guard).
 6. [ ] DSL and `ui::` hardening (`int` canonical decimal, collisions, `requires` = executable in

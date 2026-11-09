@@ -24,7 +24,10 @@ plugins/backup/              → mu backup          (plugin id: user:backup)
 
 - A directory is a command if it contains `flags.sh`, `cmd.sh` or `cmd`.
 - Directories whose name starts with `_` or `.` are ignored; `+` marks an extension (below).
-- `cmd.sh` is run with Bash, with the `ui::` helpers loaded. `cmd` can be any executable
+- `cmd.sh` is run by a fresh Bash, with the `ui::` helpers loaded: it is *sourced*, so `$0`
+  and `${BASH_SOURCE[0]}` are its own path and a top-level `return <code>` ends it. Reach
+  the files of the plugin with `$CB_COMMAND_DIR` / `$CB_PLUGIN_ROOT`
+  (`source "$CB_PLUGIN_ROOT/_lib/common.sh"`). `cmd` can be any executable
   (Python, binary…) with a shebang and the executable bit; it receives the same environment.
 - Official plugins live in `core/` (id `core:<name>`), user plugins in `plugins/`
   (id `user:<name>`). `self` is reserved. `plugins/system/` would **shadow** the official
@@ -83,8 +86,11 @@ checked.
 - Lines may come in any order, except that `arg` lines define the order of the positionals.
 - An `arg` is **required unless `--optional`** is given.
 - `flags.sh` is Bash: quote texts containing spaces, `#` starts a comment, `$` is expanded
-  inside double quotes (use single quotes for a literal `$`), functions may be defined (for
-  `--choices-from`).
+  inside double quotes (use single quotes for a literal `$`), functions and variables may be
+  defined (for `--choices-from`; prefix them with `_` + the plugin name). `CB_COMMAND`,
+  `CB_COMMAND_DIR` and `CB_PLUGIN_ROOT` are already set when it is read.
+- `flags.sh` only declares: no `set -e` / `set -u` (they are undone), no `cd` (undone), no
+  output (sent to stderr), no slow command.
 
 ### Complete example
 

@@ -10,7 +10,8 @@ will eventually be written in other languages (e.g. Python for heavy work).
 ## Decision
 After parsing, the framework exports `FLAG_<NAME>` and `ARG_<NAME>` (plus `CB_*` context)
 and `exec`s the command in a new process with the positionals as `"$@"`: `cmd.sh` through
-`lib/run.sh` (which preloads the `ui::` helpers), or `cmd` directly. Inherited `FLAG_*` /
+`bash -c 'source lib/ui.sh; source "$0"' <cmd.sh>` (which preloads the `ui::` helpers; `$0` is
+the `cmd.sh`, `lib/run.sh` until 2026-11-09), or `cmd` directly. Inherited `FLAG_*` /
 `ARG_*` from a parent invocation are cleared first.
 
 ## Alternatives considered

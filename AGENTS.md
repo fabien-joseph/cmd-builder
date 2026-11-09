@@ -22,7 +22,7 @@ messages, `--help`, README.md and docs. The owner talks to agents in French, tho
 ```
 init.sh              install / uninstall (./init.sh <name>, ./init.sh --uninstall <name>)
 main.sh              entry point, symlinked as ~/.local/bin/<name>
-lib/                 the framework (sourced, never executed directly; lib/run.sh is the exception)
+lib/                 the framework (sourced, never executed directly)
 builtin/self/        built-in commands "<name> self …", written with the framework itself
 core/                official plugins, versioned in this repo (id core:<plugin>)
 plugins/             user plugins, git-ignored, often their own git repos (id user:<plugin>)

@@ -798,6 +798,34 @@ check "deps: package names quoted"             "pmc apt install 'a;b'" "apt-get 
 check "deps: no requires in core/ and builtin/" \
   "grep -rnE '^[[:space:]]*requires[[:space:]]' '$ROOT'/core '$ROOT'/builtin | wc -l" "0"
 
+# A hostile flags.sh: variables named like framework locals, set -euo pipefail, cd, output,
+# IFS, a --strict snippet reading stdin. None of it may change how the command runs.
+mkdir -p "$P/hostile"
+cat >"$P/hostile/flags.sh" <<'X'
+set -euo pipefail
+dir=/nonexistent display="Pretty" top=1 words=x cur=x start=9 name=x IFS=,
+cd /
+echo "noise dir=$CB_COMMAND_DIR"
+about "Hostile"
+flag target string "Target" --choices-from 'printf "%s\n" b1 b2'
+flag pick string "Pick" --choices-from 'read -r _hostile_l; echo a' --strict
+arg name "Name" --optional
+example "hostile --target b1 bob" "valid"
+X
+cat >"$P/hostile/cmd.sh" <<'X'
+[[ -n $FLAG_PICK ]] && { read -r line; echo "stdin=$line"; exit 0; }
+echo "pwd=$PWD target=$FLAG_TARGET name=$ARG_NAME cmd=$CB_COMMAND root=$CB_PLUGIN_ROOT 0=$0 leak=${_cb_cmd-none}"
+[[ $ARG_NAME == ret ]] && return 4
+X
+check_eq "flags.sh: no effect on the run"       "cd '$TMP/work' && tt hostile --target b1 bob 2>/dev/null" "pwd=$TMP/work target=b1 name=bob cmd=tt hostile root=$P/hostile 0=$P/hostile/cmd.sh leak=none"
+check "flags.sh: its output goes to stderr"     "tt hostile --help 2>/dev/null | grep -c noise" "0"
+check "flags.sh: sees CB_COMMAND_DIR"           "tt hostile 2>&1 >/dev/null" "noise dir=$P/hostile"
+check "flags.sh: completion unaffected"         "tt __complete -- hostile --target ''" "b2"
+check "flags.sh: doctor accepts its example"    "tt self doctor 2>&1 | grep -c \"example 'hostile\"" "0"
+check_eq "--strict snippet leaves stdin alone"  "printf 'line1\n' | tt hostile --pick a 2>/dev/null" "stdin=line1"
+check "cmd.sh: top-level return = exit code"    "status 'tt hostile ret'" "4"
+rm -rf "$P/hostile"
+
 # Behaviours no check covered (surviving mutants of the review of 2026-11-09, docs/testing.md)
 check "parse: --no-x only for bools"            "tt demo greet --no-key -k K Bob" "unknown option '--no-key'"
 check "parse: a bool takes no value"            "tt demo greet --loud=1 -k K Bob" "--loud does not take a value"

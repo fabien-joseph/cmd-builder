@@ -79,9 +79,19 @@ cb::complete() {
       break
     fi
   done
-  CB_PLUGIN_ROOT=$(cb::plugin_root_of "$dir" "$CB_PLUGIN_ROOT")
-  cb::spec_load "$dir" >/dev/null 2>&1
-  export CB_COMMAND_DIR=$dir
+  cb::_complete_at "$dir" "$(cb::plugin_root_of "$dir" "$CB_PLUGIN_ROOT")" "$start" "${words[@]}"
+}
+
+# Second half of cb::complete, for the command directory <dir> reached by the words: the
+# spec is loaded before any local exists, so flags.sh cannot overwrite them (see cb::run).
+cb::_complete_at() { # dir plugin-root start word...
+  export CB_COMMAND_DIR=$1 CB_PLUGIN_ROOT=$2
+  cb::spec_load "$1" >/dev/null 2>&1
+  local dir=$1 start=$3 name i w pos=0 skip=0 endopts=0
+  shift 3
+  local -a words=("$@")
+  local n=$((${#words[@]} - 1))
+  local cur=${words[n]}
 
   # Where are we among the options and arguments already typed?
   for ((i = start; i < n; i++)); do
