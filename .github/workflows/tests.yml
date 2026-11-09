@@ -66,7 +66,7 @@ jobs:
         run: |
           docker run --rm -v "$PWD:/w" -w /w bash:4.2 sh -c '
             apk add --no-cache coreutils diffutils findutils gawk git grep sed >/dev/null &&
-            git config --global --add safe.directory /w &&
+            git config --system --add safe.directory /w &&
             bash --version | head -1 &&
             bash tests/run.sh'
       - name: Bash 4.1 is refused with a clear message

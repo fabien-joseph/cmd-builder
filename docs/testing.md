@@ -116,9 +116,10 @@ The `# Guide for AI assistants` block of the end-to-end suite generates the guid
 
 `.github/workflows/tests.yml` (decision 0011) runs on every push to `main` and every pull
 request: Linux, macOS with Homebrew Bash (both also under a pseudo-terminal), and Bash 4.2
-plus the Bash 4.1 guard in the official `bash:*` Docker images (with `git config --global
+plus the Bash 4.1 guard in the official `bash:*` Docker images (with `git config --system
 --add safe.directory /w`: the bind-mounted checkout belongs to another uid, and git refused it,
-which silently skipped the `docs/handoff.md` commit check). Keep tests portable to BSD
+which silently skipped the `docs/handoff.md` commit check; `--system`, since the suite sets
+its own `HOME`). Keep tests portable to BSD
 tools (macOS) and to BusyBox images with GNU tools added; the sandbox uses the physical
 path of `mktemp -d` because macOS returns `/var/...`, a symlink to `/private/var/...`.
 With `gh` installed: `gh run list`, `gh run watch`, `gh run view --log-failed`.
