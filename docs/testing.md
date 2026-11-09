@@ -124,6 +124,9 @@ tools (macOS) and to BusyBox images with GNU tools added; the sandbox uses the p
 path of `mktemp -d` because macOS returns `/var/...`, a symlink to `/private/var/...`.
 With `gh` installed: `gh run list`, `gh run watch`, `gh run view --log-failed`.
 
+The portability block builds a Turkish locale with `localedef` (counted as skipped where it
+cannot: macOS, Alpine) and checks names containing `i`; `self doctor` must report CRLF files.
+
 ## Not covered yet
 
 - zsh completion (`templates/completion.zsh`) is not exercised automatically (zsh was not

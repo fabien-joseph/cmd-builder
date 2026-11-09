@@ -11,7 +11,9 @@ my-laptop · Linux 6.18 · up 50 min
 
 ## Installation
 
-Requirements: **Bash ≥ 4.2** (on macOS: `brew install bash`) and git.
+Requirements: **Bash ≥ 4.2** (on macOS: `brew install bash`; macOS terminals start login
+shells, which read `~/.bash_profile`: make it `source ~/.bashrc`) and git. Clone it from WSL
+(or keep `core.autocrlf` off): the repository forces LF line endings (`.gitattributes`).
 
 ```bash
 git clone git@github.com:fabien-joseph/cmd-builder.git

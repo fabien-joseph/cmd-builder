@@ -98,7 +98,7 @@ cb::parse() {
       *)
         rest=${a#-}
         # "-5" is a negative number, unless -5 is a declared short option.
-        if [[ $rest =~ ^[0-9] && -z ${_CB_F_BYSHORT[${rest:0:1}]:-} ]]; then
+        if [[ ${rest:0:1} == [$_CB_09] && -z ${_CB_F_BYSHORT[${rest:0:1}]:-} ]]; then
           _CB_POS+=("$a")
           continue
         fi
@@ -172,7 +172,8 @@ cb::parse() {
 
 # Exports FLAG_* and ARG_* for the command. Clears those inherited from a parent call.
 cb::export_values() {
-  local name v
+  # Names are ASCII (checked by flag/arg); upper-case them in the C locale (Turkish would turn i into a dotted capital I).
+  local name v LC_ALL=C
   unset "${!FLAG_@}" "${!ARG_@}"
   for name in "${_CB_FLAGS[@]}"; do
     v=FLAG_${name^^}

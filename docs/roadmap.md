@@ -61,7 +61,7 @@ batch, in this order (owner's choice, 2026-11-09):
    PATH, prompts on the terminal they read).
 7. [x] System commands robustness (`self update` exit codes and re-exec, init/uninstall
    failure paths, config file mode, `CDPATH`, POSIX mode).
-8. [ ] Portability: locale-independent names, `.gitattributes`, CRLF detection, macOS login shells.
+8. [x] Portability: locale-independent names, `.gitattributes`, CRLF detection, macOS login shells.
 9. [ ] Completion and performance (quoted candidates, root-name escaping, batch `about`, zsh `compinit`).
 10. [ ] Docs and versioning (trust model of plugins, amended decisions, README as a tour,
     `--version` + CHANGELOG of contract changes) — before any DSL extension below.

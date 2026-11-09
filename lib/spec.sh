@@ -37,7 +37,7 @@ cb::spec_reset() {
 # "010" as octal and fails on "08": commands receive the canonical decimal.
 cb::int_canon() {
   local v=$1 sign= max=9223372036854775807
-  [[ $v =~ ^-?[0-9]+$ ]] || return 1
+  [[ $v =~ $_CB_RE_INT ]] || return 1
   [[ $v == -* ]] && sign=- v=${v#-} max=9223372036854775808
   v=${v#"${v%%[!0]*}"}
   [[ -z $v ]] && v=0 sign=
@@ -160,7 +160,7 @@ example() {
 requires() {
   local usage='usage: requires <command> [--optional] [--apt|--dnf|--pacman|--zypper|--apk|--brew <package|->]'
   local tool=${1:-}
-  [[ $tool =~ ^[a-zA-Z0-9][a-zA-Z0-9._+-]*$ ]] || cb::_spec_err "invalid command name '$tool' ($usage)"
+  [[ $tool =~ $_CB_RE_TOOL ]] || cb::_spec_err "invalid command name '$tool' ($usage)"
   shift
   [[ -n ${_CB_R_OPT[$tool]+x} ]] && cb::_spec_err "'$tool' is required twice"
   _CB_R_OPT[$tool]=
@@ -168,7 +168,7 @@ requires() {
     case $1 in
       --optional) _CB_R_OPT[$tool]=1 && shift ;;
       --apt | --dnf | --pacman | --zypper | --apk | --brew)
-        [[ ${2:-} =~ ^([a-zA-Z0-9@][a-zA-Z0-9._+@/-]*|-)$ ]] || cb::_spec_err "$1 expects a package name or '-' ($usage)"
+        [[ ${2:-} =~ $_CB_RE_PKG ]] || cb::_spec_err "$1 expects a package name or '-' ($usage)"
         _CB_R_PKG[${1#--}/$tool]=$2
         shift 2
         ;;
@@ -183,7 +183,7 @@ flag() {
   local usage='usage: flag <name> [-x] <bool|string|int> "description" [--default v] [--required] [--choices "a b" | --choices-from cmd [--strict]]'
   local name=${1:-} short= type desc def= hasdef= req= choices= _o_choices= _o_from= _o_strict=
   local -a list=()
-  [[ $name =~ ^[a-z0-9][a-z0-9-]*$ ]] || cb::_spec_err "invalid flag name '$name' ($usage)"
+  [[ $name =~ $_CB_RE_FLAG ]] || cb::_spec_err "invalid flag name '$name' ($usage)"
   shift
   if [[ ${1:-} == -? ]]; then
     short=${1#-}
@@ -214,7 +214,7 @@ flag() {
   [[ $name == help ]] && cb::_spec_err "--help is reserved"
   [[ -n ${_CB_F_TYPE[$name]+x} ]] && cb::_spec_err "--$name is declared twice"
   if [[ -n $short ]]; then
-    [[ $short =~ ^[a-zA-Z0-9]$ ]] || cb::_spec_err "invalid short option '-$short'"
+    [[ $short =~ $_CB_RE_SHORT ]] || cb::_spec_err "invalid short option '-$short'"
     [[ $short == h ]] && cb::_spec_err "-h is reserved for --help"
     [[ -n ${_CB_F_BYSHORT[$short]+x} ]] && cb::_spec_err "-$short is already used by --${_CB_F_BYSHORT[$short]}"
   fi
@@ -252,7 +252,7 @@ arg() {
   local usage='usage: arg <name> "description" [--optional] [--variadic] [--choices "a b" | --choices-from cmd [--strict]]'
   (($# >= 2)) || cb::_spec_err "$usage"
   local name=$1 desc=$2 opt= var= last _o_choices= _o_from= _o_strict=
-  [[ $name =~ ^[a-z0-9][a-z0-9_-]*$ ]] || cb::_spec_err "invalid argument name '$name'"
+  [[ $name =~ $_CB_RE_ARG ]] || cb::_spec_err "invalid argument name '$name'"
   shift 2
   while (($#)); do
     case $1 in

@@ -1,0 +1,3 @@
+# Unix line endings everywhere: a checkout made with Git for Windows (core.autocrlf=true)
+# would otherwise get CRLF scripts, unusable from WSL ("bash\r: No such file").
+* text=auto eol=lf

@@ -182,6 +182,12 @@ if [[ -z $reload_rc ]] && ((bash_ok + zsh_ok == 1)); then
   ((bash_ok)) && reload_rc=$HOME/.bashrc || reload_rc=$zshrc
 fi
 
+# macOS terminals open login shells, which read ~/.bash_profile, not ~/.bashrc.
+if ((bash_ok)) && [[ $(uname -s 2>/dev/null) == Darwin && $SHELL == */bash ]] &&
+  ! grep -qs 'bashrc' "$HOME/.bash_profile"; then
+  ui::warn "macOS login shells do not read ~/.bashrc: add 'source ~/.bashrc' to ~/.bash_profile"
+fi
+
 case ":$PATH:" in
   *":$bin_dir:"*) ;;
   *)

@@ -104,7 +104,9 @@ functions (`name=()`): Bash 4.2 ignores `declare -g` for an assignment inside a 
 | `_CB_REQS` + `_CB_R_OPT`, `_CB_R_PKG` | `requires` | required tools; optional flag; `<manager>/<tool>` → package |
 | `_CB_PMS`, `_CB_PM_ALL` | `cb::config_load` | configured package managers; supported ones |
 | `_CB_DEP_TOOLS`, `_CB_DEP_REQ`, `_CB_DEP_USERS`, `_CB_DEP_PKG` | `cb::deps_collect` | tools of every active command |
-| `_CB_NO_DYNAMIC` | `self doctor` | when set, `cb::choice_ok` does not validate `--choices-from --strict` values |
+| `_CB_NO_DYNAMIC` | `self doctor` | when set, `cb::choice_ok` does not validate `--choices-from --strict` values (never taken from the environment: `main.sh` unsets it) |
+| `_CB_AZ`, `_CB_AN`, `_CB_RE_*` | `lib/util.sh` (constants) | name characters written out and the name patterns (no `[a-z]` range: locale-independent) |
+| `_CB_ROUTE_DIR`, `_CB_ROUTE_N` | `cb::descend` | directory reached by the routing, words consumed |
 
 ## Exit codes
 

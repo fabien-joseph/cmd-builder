@@ -1,5 +1,20 @@
 # Internal utility functions.
 
+# Characters of names, written out: a range such as [a-z] depends on the user's locale
+# (under tr_TR.UTF-8 it does not contain "i"; under en_US.UTF-8 it matches accented letters). Every name
+# check uses these patterns (review of 2026-11-09, POR-05).
+_CB_AZ=abcdefghijklmnopqrstuvwxyz _CB_AZU=ABCDEFGHIJKLMNOPQRSTUVWXYZ _CB_09=0123456789
+_CB_AN=$_CB_AZ$_CB_AZU$_CB_09
+_CB_RE_NAME="^[$_CB_AN][${_CB_AN}_-]*$"                        # command and plugin directories
+_CB_RE_ID="^(core|user):[$_CB_AN][${_CB_AN}_-]*$|^user:[+][$_CB_AN][${_CB_AN}_-]*$"
+_CB_RE_ROOT="^[$_CB_AZ][$_CB_AZ${_CB_09}_-]*$"                 # root command name
+_CB_RE_FLAG="^[$_CB_AZ$_CB_09][$_CB_AZ${_CB_09}-]*$"
+_CB_RE_ARG="^[$_CB_AZ$_CB_09][$_CB_AZ${_CB_09}_-]*$"
+_CB_RE_SHORT="^[$_CB_AN]$"
+_CB_RE_TOOL="^[$_CB_AN][${_CB_AN}._+-]*$"
+_CB_RE_PKG="^([${_CB_AN}@][${_CB_AN}._+@/-]*|-)$"
+_CB_RE_INT="^-?[$_CB_09]+$"
+
 # Absolute path of a file, symlinks resolved (portable, without readlink -f).
 cb::realpath() {
   local p=$1 d
@@ -13,7 +28,7 @@ cb::realpath() {
 }
 
 # Valid name for a command or a plugin.
-cb::valid_name() { [[ $1 =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]*$ ]]; }
+cb::valid_name() { [[ $1 =~ $_CB_RE_NAME ]]; }
 
 # A directory is a command if it contains flags.sh, cmd.sh or cmd.
 cb::is_command_dir() {

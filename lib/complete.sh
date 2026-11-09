@@ -99,7 +99,7 @@ cb::_complete_at() { # dir plugin-root start word...
     fi
     # "-5" is a positional (negative number) unless -5 is a declared short option,
     # same rule as the parser.
-    if ((!endopts)) && [[ $w =~ ^-[0-9] && -z ${_CB_F_BYSHORT[${w:1:1}]:-} ]]; then
+    if ((!endopts)) && [[ $w == -[$_CB_09]* && -z ${_CB_F_BYSHORT[${w:1:1}]:-} ]]; then
       ((pos++))
       continue
     fi

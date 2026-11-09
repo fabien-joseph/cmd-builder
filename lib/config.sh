@@ -12,7 +12,7 @@ declare -ga _CB_CONFIG_ERRORS=()
 declare -ga _CB_PMS=()                                     # configured package managers
 declare -ga _CB_PM_ALL=(apt dnf pacman zypper apk brew) # supported ones (decision 0014)
 
-cb::valid_id() { [[ $1 =~ ^(core|user):[a-zA-Z0-9][a-zA-Z0-9_-]*$ || $1 =~ ^user:\+[a-zA-Z0-9][a-zA-Z0-9_-]*$ ]]; }
+cb::valid_id() { [[ $1 =~ $_CB_RE_ID ]]; }
 
 cb::config_load() {
   local f=$CB_CONFIG_DIR/config line n=0 kw a b extra

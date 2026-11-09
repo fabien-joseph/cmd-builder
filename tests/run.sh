@@ -944,6 +944,23 @@ mkdir -p "$P/strict" && printf '%s\n' 'flag env string "E" --choices-from "echo 
 check "env: _CB_NO_DYNAMIC not taken from it" "_CB_NO_DYNAMIC=1 tt strict --env prod" "invalid value 'prod'"
 rm -rf "$P/strict"
 
+# Portability (review of 2026-11-09, batch 8)
+if L=$TMP/loc && mkdir -p "$L" && localedef -i tr_TR -f UTF-8 "$L/tr_TR.UTF-8" >/dev/null 2>&1; then
+  mkdir -p "$P/tri" && echo 'flag title string "T"' >"$P/tri/flags.sh" && echo 'echo "title=$FLAG_TITLE"' >"$P/tri/cmd.sh"
+  check_eq "locale: Turkish names and FLAG_ names" "LOCPATH='$L' LC_ALL=tr_TR.UTF-8 tt tri --title x 2>/dev/null" "title=x"
+  check "locale: Turkish, official command"    "LOCPATH='$L' LC_ALL=tr_TR.UTF-8 tt self plugins 2>&1" "core:system"
+  rm -rf "$P/tri"
+else
+  skipped "Turkish locale checks (localedef cannot build tr_TR here)"
+fi
+rm -rf "$TMP/loc"
+mkdir -p "$P/crlf" && printf 'about "x"\r\n' >"$P/crlf/flags.sh" && echo 'echo' >"$P/crlf/cmd.sh"
+check "doctor: CRLF files reported"           "tt self doctor" "plugins/crlf/flags.sh has Windows line endings (CRLF)"
+rm -rf "$P/crlf"
+check "completion: guarded for Bash < 4"      "tt self completion bash | grep -c 'BASH_VERSINFO'" "1"
+check "completion: works with eval"           "bash -c 'eval \"\$(tt self completion bash)\"; type -t _cb_complete_tt'" "function"
+check "gitattributes: LF line endings"        "cat '$ROOT/.gitattributes'" "* text=auto eol=lf"
+
 # Behaviours no check covered (surviving mutants of the review of 2026-11-09, docs/testing.md)
 check "parse: --no-x only for bools"            "tt demo greet --no-key -k K Bob" "unknown option '--no-key'"
 check "parse: a bool takes no value"            "tt demo greet --loud=1 -k K Bob" "--loud does not take a value"

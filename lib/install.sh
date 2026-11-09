@@ -13,7 +13,7 @@ cb::tilde() {
 
 # Valid name for the root command (stricter than cb::valid_name: it becomes a file name in
 # ~/.local/bin and part of a shell function name).
-cb::valid_root_name() { [[ $1 =~ ^[a-z][a-z0-9_-]*$ ]]; }
+cb::valid_root_name() { [[ $1 =~ $_CB_RE_ROOT ]]; }
 
 # Config directory of the root command <name>.
 cb::config_dir_of() { printf '%s' "${XDG_CONFIG_HOME:-$HOME/.config}/$1"; }
