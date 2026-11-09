@@ -60,13 +60,36 @@ cb::child_dir() {
   if [[ -n $ovl ]] && cb::is_command_dir "$ovl/$2"; then printf '%s' "$ovl/$2"; else printf '%s' "$1/$2"; fi
 }
 
+# The one routing rule (decision 0001), shared by cb::main, completion and self doctor:
+# from the command directory <dir>, the following words that name a subcommand are consumed.
+# Sets _CB_ROUTE_DIR (directory reached) and _CB_ROUTE_N (number of words consumed).
+cb::descend() { # dir word...
+  _CB_ROUTE_DIR=$1 _CB_ROUTE_N=0
+  shift
+  while (($#)) && cb::is_child "$_CB_ROUTE_DIR" "$1"; do
+    _CB_ROUTE_DIR=$(cb::child_dir "$_CB_ROUTE_DIR" "$1")
+    ((++_CB_ROUTE_N))
+    shift
+  done
+}
+
 # Prints "directory<TAB>words" for a command then, recursively, for all its subcommands
-# (words: the path of names below <dir>, e.g. "db restore").
-cb::walk() { # dir [words]
+# (words: the path of names below <dir>, e.g. "db restore"). A symlinked subcommand that
+# points back to the directory or one of its parents is skipped: it would never end.
+cb::walk() { # dir [words] [physical path of dir]
+  local real=${3:-} c d r
+  [[ -n $real ]] || real=$(cd -P -- "$1" 2>/dev/null && pwd)
   printf '%s\t%s\n' "$1" "${2:-}"
-  local c
   while IFS= read -r c; do
-    [[ -n $c ]] && cb::walk "$(cb::child_dir "$1" "$c")" "${2:+$2 }$c"
+    [[ -n $c ]] || continue
+    d=$(cb::child_dir "$1" "$c")
+    if [[ ! -L $d && ${d%/*} == "$1" ]]; then
+      r=$real/$c
+    else
+      r=$(cd -P -- "$d" 2>/dev/null && pwd) || continue
+      [[ $real == "$r" || $real == "$r"/* ]] && continue
+    fi
+    cb::walk "$d" "${2:+$2 }$c" "$r"
   done < <(cb::children "$1")
 }
 

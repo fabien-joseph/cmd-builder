@@ -25,17 +25,13 @@ cb::main() {
       ;;
   esac
 
-  local name=$1 dir top
+  local name=$1 top
   shift
-  dir=$(cb::plugin_dir "$name") || cb::_unknown_plugin "$name"
-  top=$dir
-  local -a path=("$CB_NAME" "$name")
-  while (($#)) && cb::is_child "$dir" "$1"; do
-    dir=$(cb::child_dir "$dir" "$1")
-    path+=("$1")
-    shift
-  done
-  cb::run "$dir" "$(cb::plugin_root_of "$dir" "$top")" "${path[*]}" "$@"
+  top=$(cb::plugin_dir "$name") || cb::_unknown_plugin "$name"
+  cb::descend "$top" "$@"
+  local -a path=("$CB_NAME" "$name" "${@:1:_CB_ROUTE_N}")
+  shift "$_CB_ROUTE_N"
+  cb::run "$_CB_ROUTE_DIR" "$(cb::plugin_root_of "$_CB_ROUTE_DIR" "$top")" "${path[*]}" "$@"
 }
 
 cb::_unknown_plugin() {

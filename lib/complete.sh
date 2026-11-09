@@ -69,17 +69,10 @@ cb::complete() {
   fi
 
   dir=$(cb::plugin_dir "${words[0]}") || return 0
-  export CB_PLUGIN_ROOT=$dir
-  start=$n
-  for ((i = 1; i < n; i++)); do
-    if cb::is_child "$dir" "${words[i]}"; then
-      dir=$(cb::child_dir "$dir" "${words[i]}")
-    else
-      start=$i
-      break
-    fi
-  done
-  cb::_complete_at "$dir" "$(cb::plugin_root_of "$dir" "$CB_PLUGIN_ROOT")" "$start" "${words[@]}"
+  # Routing over the complete words only (not the one being typed).
+  cb::descend "$dir" "${words[@]:1:n-1}"
+  start=$((_CB_ROUTE_N + 1))
+  cb::_complete_at "$_CB_ROUTE_DIR" "$(cb::plugin_root_of "$_CB_ROUTE_DIR" "$dir")" "$start" "${words[@]}"
 }
 
 # Second half of cb::complete, for the command directory <dir> reached by the words: the

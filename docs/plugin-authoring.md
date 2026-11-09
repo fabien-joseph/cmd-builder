@@ -233,7 +233,10 @@ requires jq --optional                     # the command works without it
 ### Parsing rules
 
 `--name`, `--name=value`, `--name value`, `--no-name`, `-x`, `-x value`, `-xvalue`, `-abc`,
-`--` (end of options). Options may appear anywhere among positionals. `-5` is a positional
+`--` (end of options). Options may appear anywhere among positionals, but **after** the
+subcommand names: `mu backup -v restore` is an error when `restore` is a subcommand of
+`mu backup` (write `mu backup restore -v`, or `mu backup -v -- restore` for a value named
+like it). `-5` is a positional
 unless `-5` is a declared short flag. `-` alone is a positional.
 
 ## What the command receives

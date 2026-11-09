@@ -79,6 +79,9 @@ extensions replaced the "another plugin name" advice, decision 0013). Now:
   read-only mounts in `df`). The owner's condition: the guide must not encourage extra
   dependencies; a tool that is really needed is declared with `requires`.
 - The embedded reference's headings are one level below the guide's sections.
+- Evaluated after the change (3 Haiku answers: notes, `system disk`, a multi-line report):
+  all used `CB_EOF` and the guards, tried on `mktemp -d` data, left WSL mounts out of
+  `df`, and worked; `self doctor` found nothing.
 
 ## Alternatives considered
 - *The guide in French or other languages* (roadmap idea): rejected by the owner, the

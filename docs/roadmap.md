@@ -55,7 +55,7 @@ batch, in this order (owner's choice, 2026-11-09):
    distribution / package managers / config dir in Setup, WSL notes, no incentive to add
    dependencies (`requires` when really needed).
 4. [x] flags.sh isolation (in-process hardening) and `cmd.sh` started with `$0` = the command.
-5. [ ] One router shared by run, completion, doctor and `self new` (rename-aware `self new`,
+5. [x] One router shared by run, completion, doctor and `self new` (rename-aware `self new`,
    an option before a subcommand is an error, "Did you mean", symlink-loop guard).
 6. [ ] DSL and `ui::` hardening (`int` canonical decimal, collisions, `requires` = executable in
    PATH, prompts on the terminal they read).
@@ -108,8 +108,6 @@ AI talks in the user's language, see decision 0010).
 - `self deps update` on pacman is a full system upgrade (`pacman -Syu`): Arch does not
   support partial upgrades.
 - Extensions (`plugins/+x/`) can only extend official plugins, not other user plugins.
-- A mistyped subcommand after a command that has its own `cmd.sh` gives "unexpected
-  argument" without a "Did you mean" suggestion (`mu self deps manager`).
 
 ## Manual recipe: testing `self update`
 

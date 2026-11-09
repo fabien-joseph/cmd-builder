@@ -181,7 +181,8 @@ arg host "Server" --choices-from '"$CB_COMMAND_DIR/_hosts.sh"'
 - Available variables: `CB_NAME`, `CB_ROOT`, `CB_CONFIG_DIR`, `CB_COMMAND_DIR`, `CB_PLUGIN_ROOT`.
 
 Parsing accepts `--name`, `--name=val`, `--name val`, `--no-name`, `-x`, `-x val`, `-xval`,
-`-abc` (grouped bools), `--` (end of options); options may be placed anywhere.
+`-abc` (grouped bools), `--` (end of options); options may be placed anywhere after the
+subcommand names (`mu backup restore -v`, not `mu backup -v restore`).
 `-h` / `--help` are reserved.
 
 ### `cmd.sh`

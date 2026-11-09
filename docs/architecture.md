@@ -41,7 +41,12 @@ are ignored. A command without an executable is a pure *router*: it shows its he
 **Routing.** After the plugin name, words that name a child command are consumed greedily;
 the first word that is not a child (or that starts with `-`) stops routing and everything
 left goes to the reached command. A child name therefore always wins over a positional
-argument with the same value.
+argument with the same value. The rule lives in `cb::descend` (`_CB_ROUTE_DIR`,
+`_CB_ROUTE_N`), used by `cb::main`, `cb::complete` and `self doctor`; `cb::parse` refuses an
+option followed by a child name (`mu backup -v restore`) and suggests a child for an
+unexpected first argument. `self new` resolves its first word through exposed names too
+(renamed plugins), and `cb::walk` skips symlinked subcommands pointing to a parent.
+`cb::help` shows examples of a renamed plugin under its exposed name (`cb::_example_line`).
 
 **Plugin ids and exposed names.** Every top-level plugin has an id `core:<dir>` or
 `user:<dir>` and an *exposed name* (the dir name, or the `rename` target from config).

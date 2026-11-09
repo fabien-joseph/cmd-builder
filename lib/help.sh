@@ -25,6 +25,19 @@ cb::_usage_args() {
   printf '%s' "$s"
 }
 
+# An example names its plugin by directory name ("system info"); a renamed plugin is shown
+# under its exposed name, the one the user types.
+cb::_example_line() {
+  local ex=$1 w=${1%% *} id
+  for id in "user:$w" "core:$w"; do
+    if [[ -n ${_CB_RENAME[$id]:-} && ${_CB_ID_STATE[$id]:-} == active ]]; then
+      printf '%s%s' "${_CB_RENAME[$id]}" "${ex#"$w"}"
+      return
+    fi
+  done
+  printf '%s' "$ex"
+}
+
 # Help of a command. The spec of the directory must be loaded (cb::spec_load).
 cb::help() {
   local dir=$1 display=$2 exe name l r i
@@ -84,7 +97,7 @@ cb::help() {
   if ((${#_CB_EXAMPLES[@]})); then
     cb::_section Examples
     for ((i = 0; i < ${#_CB_EXAMPLES[@]}; i += 2)); do
-      printf '  %s%s %s%s\n' "$UI_CYAN" "$CB_NAME" "${_CB_EXAMPLES[i]}" "$UI_RESET"
+      printf '  %s%s %s%s\n' "$UI_CYAN" "$CB_NAME" "$(cb::_example_line "${_CB_EXAMPLES[i]}")" "$UI_RESET"
       [[ -n ${_CB_EXAMPLES[i + 1]} ]] && printf '      %s%s%s\n' "$UI_DIM" "${_CB_EXAMPLES[i + 1]}" "$UI_RESET"
     done
   fi

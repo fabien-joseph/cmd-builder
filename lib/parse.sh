@@ -46,15 +46,22 @@ cb::parse() {
   shift 2
   _CB_VAL=() _CB_AVAL=()
   _CB_POS=()
-  local a name val c rest has endopts=0
+  local a name val c rest has endopts=0 opts=0
 
   while (($#)); do
     a=$1
     shift
     if ((endopts)) || [[ $a != -?* ]]; then
+      # An option before a subcommand name: "tt backup -v restore" would silently run
+      # "tt backup" with "restore" as its argument (owner's choice: an error). "--" escapes.
+      if ((opts && !endopts && ${#_CB_POS[@]} == 0)) && cb::is_child "$_CB_DIR" "$a"; then
+        cb::_parse_err "'$a' is a subcommand of '$_CB_DISPLAY': put the options after it" \
+          "$_CB_DISPLAY $a [options], or '--' before a value named '$a'"
+      fi
       _CB_POS+=("$a")
       continue
     fi
+    opts=1
     case $a in
       --) endopts=1 ;;
       --help)
@@ -150,6 +157,11 @@ cb::parse() {
     val=${_CB_POS[i]}
     if cb::is_child "$_CB_DIR" "$val"; then
       cb::_parse_err "unexpected argument '$val'" "'$val' is a subcommand: put the options after it."
+    fi
+    # A mistyped subcommand of a command that also runs on its own (tt self deps manager).
+    if ((i == 0)) && [[ $val != -* ]]; then
+      rest=$(cb::suggest "$val" $(cb::children "$_CB_DIR"))
+      [[ -n $rest ]] && cb::_parse_err "unexpected argument '$val'" "Did you mean: $rest?"
     fi
     cb::_parse_err "unexpected argument '$val'"
   fi

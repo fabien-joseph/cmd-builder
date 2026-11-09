@@ -30,10 +30,8 @@ check_example() {
     return
   fi
   w=("${w[@]:1}")
-  while ((${#w[@]})) && cb::is_child "$dir" "${w[0]}"; do
-    dir=$(cb::child_dir "$dir" "${w[0]}")
-    w=("${w[@]:1}")
-  done
+  cb::descend "$dir" "${w[@]}"
+  dir=$_CB_ROUTE_DIR w=("${w[@]:_CB_ROUTE_N}")
   # In a subshell: the parser exits on the first error. Dynamic --strict choices are not
   # validated (their values depend on the machine).
   # Copies with the reserved prefix: flags.sh may assign "dir" or "w" (see cb::spec_load).

@@ -1,4 +1,6 @@
 source "$CB_ROOT/lib/core.sh"
+cb::config_load
+cb::plugins_load
 
 base=$CB_ROOT/plugins
 [[ $FLAG_CORE == 1 ]] && base=$CB_ROOT/core
@@ -8,13 +10,33 @@ for p in "$@"; do
 done
 [[ $1 == self ]] && ui::die "'self' is reserved for $CB_NAME"
 
+# The first word may be the name the user sees (a renamed plugin: "rename core:system sys")
+# or a directory name: both lead to the plugin's directory (review of 2026-11-09, RTE-01).
+# Messages show the command as the user types it.
+shown=$*
+if [[ $FLAG_CORE != 1 ]]; then
+  id=${_CB_PLUGIN_ID[$1]:-}
+  [[ -z $id && -n ${_CB_ID_DIR[user:$1]:-} ]] && id=user:$1
+  [[ -z $id && -n ${_CB_ID_DIR[core:$1]:-} ]] && id=core:$1
+  if [[ -n $id ]]; then
+    # An extension of an official plugin that is not active would be inactive too.
+    if [[ ${_CB_ID_STATE[$id]} != active ]]; then
+      [[ $id == core:* ]] &&
+        ui::die "'$1' ($id) is ${_CB_ID_STATE[$id]%%:*}: a command added to it would not run (see '$CB_NAME self plugins')"
+      ui::warn "'$1' ($id) is ${_CB_ID_STATE[$id]%%:*}: the new command runs once it is active again"
+    fi
+    shown="${_CB_ID_NAME[$id]}${2:+ ${*:2}}"
+    set -- "${id#*:}" "${@:2}"
+  fi
+fi
+
 # Directory names on disk, one per word. Below an official plugin that the user has not
 # replaced, the words go to its extension plugins/+<plugin>/ (decision 0013): "+<name>"
 # (no files of its own) for every official group on the way.
 segs=("$@") plus=()
 official=
 if [[ $FLAG_CORE != 1 ]] && ! cb::is_command_dir "$base/$1" && cb::is_command_dir "$CB_ROOT/core/$1"; then
-  (($# > 1)) || ui::die "'$CB_NAME $1' is an official plugin: add a command to it ($CB_NAME self new $1 <name>), or choose another name"
+  (($# > 1)) || ui::die "'$CB_NAME $shown' is an official plugin: add a command to it ($CB_NAME self new $shown <name>), or choose another name"
   segs[0]=+$1 plus[0]=1 official=$CB_ROOT/core/$1
   udir=$base/+$1
   for ((i = 1; i < $#; i++)); do
@@ -24,7 +46,7 @@ if [[ $FLAG_CORE != 1 ]] && ! cb::is_command_dir "$base/$1" && cb::is_command_di
       official= # a user command of its own (it shadows the official one): below, plain names
     elif cb::is_command_dir "$official/$name"; then
       if ((i == $# - 1)); then
-        ui::die "'$CB_NAME $*' is an official command: choose another name, or a subcommand of it"
+        ui::die "'$CB_NAME $shown' is an official command: choose another name, or a subcommand of it"
       fi
       segs[i]=+$name plus[i]=1 official=$official/$name
     else
@@ -38,7 +60,7 @@ fi
 # Refuse before writing anything: a refused run must leave existing commands untouched.
 target=$base/$(IFS=/; printf '%s' "${segs[*]}")
 exe=$(cb::executable "$target")
-[[ -n $exe ]] && ui::die "'$CB_NAME $*' already has an executable: ${exe#"$CB_ROOT"/}"
+[[ -n $exe ]] && ui::die "'$CB_NAME $shown' already has an executable: ${exe#"$CB_ROOT"/}"
 
 plugin_new=0
 [[ -d $base/${segs[0]} ]] || plugin_new=1
@@ -82,7 +104,7 @@ TPL
 done
 
 {
-  printf '# %s %s\n' "$CB_NAME" "$*"
+  printf '# %s %s\n' "$CB_NAME" "$shown"
   cat <<'TPL'
 #
 # Options: FLAG_<NAME> (bool = 0/1) · Arguments: ARG_<NAME> and "$@"
@@ -104,7 +126,7 @@ if [[ $FLAG_GIT == 1 ]]; then
   fi
 fi
 
-ui::success "Command '$CB_NAME $*' created${extends:+ (added to the official plugin '$extends', in plugins/+$extends/)}"
+ui::success "Command '$CB_NAME $shown' created${extends:+ (added to the official plugin '$extends', in plugins/+$extends/)}"
 for f in "${created[@]}"; do printf '  + %s\n' "${f#"$CB_ROOT"/}"; done
 echo
-ui::info "Try: $CB_NAME $* --help"
+ui::info "Try: $CB_NAME $shown --help"

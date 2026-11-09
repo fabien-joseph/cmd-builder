@@ -826,6 +826,29 @@ check_eq "--strict snippet leaves stdin alone"  "printf 'line1\n' | tt hostile -
 check "cmd.sh: top-level return = exit code"    "status 'tt hostile ret'" "4"
 rm -rf "$P/hostile"
 
+# One routing rule everywhere; self new follows renames (review of 2026-11-09, batch 5)
+mkdir -p "$P/bk/restore"
+printf '%s\n' 'flag verbose -v bool "V"' 'arg target "T" --optional' 'example "bk restore -v" "ok"' >"$P/bk/flags.sh"
+echo 'echo "parent target=$ARG_TARGET"' >"$P/bk/cmd.sh" && echo 'echo restore' >"$P/bk/restore/cmd.sh"
+check "route: option before a subcommand = error" "tt bk -v restore" "'restore' is a subcommand of 'tt bk': put the options after it"
+check "route: option before a subcommand = exit 2" "status 'tt bk -v restore'" "2"
+check "route: '--' keeps a value with that name" "tt bk -v -- restore" "parent target=restore"
+check "route: did you mean after a command"    "tt self deps manager" "Did you mean: managers?"
+ln -s .. "$P/bk/restore/loop" && ln -s "$P/bk" "$P/bk/restore/back"
+check "walk: symlink loops do not hang doctor"  "timeout 20 tt self doctor >/dev/null 2>&1; echo \$?" "0"
+rm -rf "$P/bk"
+cfg=$XDG_CONFIG_HOME/tt/config
+cp "$cfg" "$TMP/cfg.orig" && grep -v '^rename core:system\|^disable core:system' "$TMP/cfg.orig" >"$cfg"
+echo 'rename core:system sys' >>"$cfg"
+check "self new: exposed name of a renamed official plugin" "tt self new sys disk2" "Command 'tt sys disk2' created (added to the official plugin 'system', in plugins/+system/)"
+check "self new: no shadowing plugin created"   "test -e '$P/sys' || echo none; tt sys info --help | head -n 1" $'none\ntt sys info'
+check "self new: directory name, exposed in messages" "tt self new system disk3" "Try: tt sys disk3 --help"
+check "help: examples under the exposed name"   "tt sys info --help" "tt sys info -s"
+rm -rf "$P/+system"
+grep -v '^rename core:system' "$cfg" >"$TMP/cfg" && mv "$TMP/cfg" "$cfg" && echo 'disable core:system' >>"$cfg"
+check "self new: refused on a disabled official plugin" "tt self new system disk4; test -e '$P/+system' || echo nothing" $'is disabled: a command added to it would not run (see \'tt self plugins\')\nnothing'
+mv "$TMP/cfg.orig" "$cfg"
+
 # Behaviours no check covered (surviving mutants of the review of 2026-11-09, docs/testing.md)
 check "parse: --no-x only for bools"            "tt demo greet --no-key -k K Bob" "unknown option '--no-key'"
 check "parse: a bool takes no value"            "tt demo greet --loud=1 -k K Bob" "--loud does not take a value"
