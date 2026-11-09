@@ -134,6 +134,23 @@ cb::about_of() {
   )
 }
 
+# Summaries of several commands, in _CB_ABOUTS (same order): one subshell for the whole list
+# instead of one per command (root help and Tab with many plugins, review CMP-04). If a
+# flags.sh ends that subshell early (exit), the missing ones are read one by one.
+declare -ga _CB_ABOUTS=()
+cb::abouts_of() { # dir...
+  local i
+  mapfile -t _CB_ABOUTS < <(
+    for d; do
+      cb::spec_load "$d" >/dev/null 2>&1
+      printf '%s\n' "${_CB_ABOUT//$'\n'/ }"
+    done
+  )
+  for ((i = ${#_CB_ABOUTS[@]}; i < $#; i++)); do
+    _CB_ABOUTS[i]=$(cb::about_of "${@:i+1:1}")
+  done
+}
+
 cb::_spec_err() {
   # Line of flags.sh that triggered the call, whatever the call depth.
   local i line=?

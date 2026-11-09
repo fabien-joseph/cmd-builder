@@ -30,6 +30,10 @@ cb::realpath() {
 # Valid name for a command or a plugin.
 cb::valid_name() { [[ $1 =~ $_CB_RE_NAME ]]; }
 
+# Valid name for the root command (stricter than cb::valid_name: it becomes a file name in
+# ~/.local/bin and is written into shell code: completion scripts, rc blocks).
+cb::valid_root_name() { [[ $1 =~ $_CB_RE_ROOT ]]; }
+
 # A directory is a command if it contains flags.sh, cmd.sh or cmd.
 cb::is_command_dir() {
   [[ -d $1 ]] && [[ -f $1/flags.sh || -f $1/cmd.sh || -f $1/cmd ]]
@@ -70,6 +74,12 @@ cb::is_child() {
 
 # Directory of the subcommand <name> of <dir>: the one of the extension of <dir> if it has
 # it (a user command shadows the official one), otherwise <dir>/<name>.
+# Same as cb::child_dir, result in REPLY: no subshell, for loops over many children.
+cb::child_dir_r() {
+  local ovl=${_CB_OVL[$1]:-}
+  if [[ -n $ovl ]] && cb::is_command_dir "$ovl/$2"; then REPLY=$ovl/$2; else REPLY=$1/$2; fi
+}
+
 cb::child_dir() {
   local ovl=${_CB_OVL[$1]:-}
   if [[ -n $ovl ]] && cb::is_command_dir "$ovl/$2"; then printf '%s' "$ovl/$2"; else printf '%s' "$1/$2"; fi

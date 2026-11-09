@@ -11,9 +11,6 @@ cb::tilde() {
   if [[ $1 == "$HOME" || $1 == "$HOME"/* ]]; then printf '~%s' "${1#"$HOME"}"; else printf '%s' "$1"; fi
 }
 
-# Valid name for the root command (stricter than cb::valid_name: it becomes a file name in
-# ~/.local/bin and part of a shell function name).
-cb::valid_root_name() { [[ $1 =~ $_CB_RE_ROOT ]]; }
 
 # Config directory of the root command <name>.
 cb::config_dir_of() { printf '%s' "${XDG_CONFIG_HOME:-$HOME/.config}/$1"; }

@@ -3,7 +3,7 @@
 # ("if", not "return": the script may be run with eval).
 if [ "${BASH_VERSINFO[0]:-0}" -ge 4 ]; then
 __CB_FUNC__() {
-  local IFS=$'\n' line cur prefix= wb
+  local IFS=$'\n' line cur prefix= wb q
   local -a words out
   # We split the line ourselves: COMP_WORDS also splits on ":" and "="
   # (which would break e.g. "core:system").
@@ -18,7 +18,9 @@ __CB_FUNC__() {
   COMPREPLY=()
   for line in "${out[@]}"; do
     line=${line%%$'\t'*}
-    COMPREPLY+=("${line#"$prefix"}")
+    # Quoted for the command line: "my notes.txt" stays one word, "$HOME" is not expanded.
+    printf -v q '%q' "${line#"$prefix"}"
+    COMPREPLY+=("$q")
   done
 }
 complete -o default -F __CB_FUNC__ __CB_NAME__

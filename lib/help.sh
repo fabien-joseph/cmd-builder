@@ -97,7 +97,10 @@ cb::help() {
 
   if ((${#children[@]})); then
     rows=()
-    for name in "${children[@]}"; do rows+=("$name" "$(cb::about_of "$(cb::child_dir "$dir" "$name")")"); done
+    local -a dirs=()
+    for name in "${children[@]}"; do cb::child_dir_r "$dir" "$name" && dirs+=("$REPLY"); done
+    cb::abouts_of "${dirs[@]}"
+    for i in "${!children[@]}"; do rows+=("${children[i]}" "${_CB_ABOUTS[i]}"); done
     cb::_section Commands
     cb::_rows "${rows[@]}"
   fi
@@ -121,10 +124,11 @@ cb::help_root() {
   printf '%s%s%s — your commands, everywhere (cmd-builder)\n' "$UI_BOLD" "$CB_NAME" "$UI_RESET"
   cb::_section Usage
   printf '  %s <command> [options]\n' "$CB_NAME"
-  for name in "${_CB_PLUGIN_NAMES[@]}"; do
-    rows+=("$name" "$(cb::about_of "${_CB_PLUGINS[$name]}")")
-  done
-  rows+=(self "$(cb::about_of "$CB_ROOT/builtin/self")")
+  local -a dirs=() names=("${_CB_PLUGIN_NAMES[@]}" self)
+  local i
+  for name in "${names[@]}"; do dirs+=("${_CB_PLUGINS[$name]:-$CB_ROOT/builtin/self}"); done
+  cb::abouts_of "${dirs[@]}"
+  for i in "${!names[@]}"; do rows+=("${names[i]}" "${_CB_ABOUTS[i]}"); done
   cb::_section Commands
   cb::_rows "${rows[@]}"
   printf "\nRun '%s <command> --help' for details.\n" "$CB_NAME"

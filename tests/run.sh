@@ -961,6 +961,21 @@ check "completion: guarded for Bash < 4"      "tt self completion bash | grep -c
 check "completion: works with eval"           "bash -c 'eval \"\$(tt self completion bash)\"; type -t _cb_complete_tt'" "function"
 check "gitattributes: LF line endings"        "cat '$ROOT/.gitattributes'" "* text=auto eol=lf"
 
+# Completion and performance (review of 2026-11-09, batch 9)
+mkdir -p "$P/files" "$TMP/w9" && touch "$TMP/w9/my notes.txt"
+echo 'flag file string "F" --choices-from "ls *.txt"' >"$P/files/flags.sh" && echo 'echo' >"$P/files/cmd.sh"
+check "bash: candidates quoted for the line"  "cd '$TMP/w9' && bashcomp '' 'tt files --file my'" '[my\ notes.txt]'
+rm -rf "$P/files" "$TMP/w9"
+check "completion: one function per root name" "CB_NAME=my-cmd bash -c 'source \"\$0/lib/core.sh\"; cb::completion_script bash' '$TMP/app' | tail -n 2; CB_NAME=my_cmd bash -c 'source \"\$0/lib/core.sh\"; cb::completion_script bash' '$TMP/app' | tail -n 2" $'complete -o default -F _cb_complete_my_2d_cmd my-cmd\nfi\ncomplete -o default -F _cb_complete_my__cmd my_cmd'
+ln -s "$TMP/app/main.sh" "$TMP/home/bin/bad\$(name)"
+check "completion: invalid root name refused" "'$TMP/home/bin/bad\$(name)' self completion bash" "is not a valid root command name"
+rm -f "$TMP/home/bin/bad\$(name)"
+mkdir -p "$P/aaexit" "$P/abafter"
+printf '%s\n' 'about "Exits"' 'exit 0' >"$P/aaexit/flags.sh" && echo 'about "After the one that exits"' >"$P/abafter/flags.sh"
+echo 'echo' >"$P/aaexit/cmd.sh" && echo 'echo' >"$P/abafter/cmd.sh"
+check "help: abouts after a flags.sh that exits" "tt --help" "After the one that exits"
+rm -rf "$P/aaexit" "$P/abafter"
+
 # Behaviours no check covered (surviving mutants of the review of 2026-11-09, docs/testing.md)
 check "parse: --no-x only for bools"            "tt demo greet --no-key -k K Bob" "unknown option '--no-key'"
 check "parse: a bool takes no value"            "tt demo greet --loud=1 -k K Bob" "--loud does not take a value"

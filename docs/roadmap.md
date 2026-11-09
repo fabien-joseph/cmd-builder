@@ -62,7 +62,7 @@ batch, in this order (owner's choice, 2026-11-09):
 7. [x] System commands robustness (`self update` exit codes and re-exec, init/uninstall
    failure paths, config file mode, `CDPATH`, POSIX mode).
 8. [x] Portability: locale-independent names, `.gitattributes`, CRLF detection, macOS login shells.
-9. [ ] Completion and performance (quoted candidates, root-name escaping, batch `about`, zsh `compinit`).
+9. [x] Completion and performance (quoted candidates, root-name escaping, batch `about`, zsh `compinit`).
 10. [ ] Docs and versioning (trust model of plugins, amended decisions, README as a tour,
     `--version` + CHANGELOG of contract changes) — before any DSL extension below.
 
@@ -99,6 +99,8 @@ AI talks in the user's language, see decision 0010).
 
 - `ARG_<NAME>` of a variadic arg joins values with spaces; use `"$@"` for values containing
   spaces.
+- Tab and root help: about 75 ms with 100 plugins (2026-11-09, WSL2), 20-30 ms for a small
+  tree; whole-tree commands (`self doctor`) stay slow on very large trees.
 - `printf` padding counts bytes: accented characters in the *left* column of aligned output
   (help rows, `system info`) break alignment. Keep left columns ASCII.
 - Bash completion re-splits the line on whitespace only: quoted words containing spaces are

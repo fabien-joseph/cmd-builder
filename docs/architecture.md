@@ -132,7 +132,13 @@ The bash adapter re-splits `COMP_LINE` itself because `COMP_WORDS` also splits o
 `=`, then strips the part bash will not replace. The engine reuses the real routing and
 spec loading, so completion can never disagree with execution.
 The bash adapter reads candidates with `mapfile` so the user's `nullglob` / `failglob` never
-glob them. `--flag=<TAB>` returns the flag's choices as full `--flag=value` words, and a
+glob them, and quotes each one with `printf %q` (a value with a space stays one word, `$` is
+not expanded). It is skipped by Bash < 4 (stock macOS Bash). The function name keeps root
+names apart (`my_cmd` → `_cb_complete_my__cmd`, `my-cmd` → `_cb_complete_my_2d_cmd`), and
+`cb::completion_script` refuses a name that is not a valid root name (it goes into shell
+code). The zsh adapter runs `compinit -i` only when `compdef` is missing.
+Summaries of a list of commands (root help, Tab, help of a group) come from
+`cb::abouts_of`: one subshell for the list (`_CB_ABOUTS`), not one per command. `--flag=<TAB>` returns the flag's choices as full `--flag=value` words, and a
 `-<digit>…` word counts as a positional (negative number), exactly as in `cb::parse`.
 `cb::spec_load` returns 0 whatever the last command of `flags.sh` returns: only DSL
 errors (exit 3) make a `flags.sh` invalid.

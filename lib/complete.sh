@@ -61,10 +61,14 @@ cb::complete() {
       cb::_cand "$cur" --help "Show help"
       return 0
     fi
-    for name in "${_CB_PLUGIN_NAMES[@]}"; do
-      cb::_cand "$cur" "$name" "$(cb::about_of "${_CB_PLUGINS[$name]}")"
+    local -a names=() dirs=()
+    for name in "${_CB_PLUGIN_NAMES[@]}" self; do
+      [[ $name == "$cur"* ]] || continue
+      names+=("$name") dirs+=("${_CB_PLUGINS[$name]:-$CB_ROOT/builtin/self}")
     done
-    cb::_cand "$cur" self "$(cb::about_of "$CB_ROOT/builtin/self")"
+    ((${#names[@]})) || return 0
+    cb::abouts_of "${dirs[@]}"
+    for i in "${!names[@]}"; do cb::_cand "$cur" "${names[i]}" "${_CB_ABOUTS[i]}"; done
     return 0
   fi
 
@@ -137,9 +141,16 @@ cb::_complete_at() { # dir plugin-root start word...
   fi
 
   if ((start == n)); then
+    local -a names=() dirs=()
     while IFS= read -r name; do
-      [[ -n $name ]] && cb::_cand "$cur" "$name" "$(cb::about_of "$(cb::child_dir "$dir" "$name")")"
+      [[ -n $name && $name == "$cur"* ]] || continue
+      cb::child_dir_r "$dir" "$name"
+      names+=("$name") dirs+=("$REPLY")
     done < <(cb::children "$dir")
+    if ((${#names[@]})); then
+      cb::abouts_of "${dirs[@]}"
+      for i in "${!names[@]}"; do cb::_cand "$cur" "${names[i]}" "${_CB_ABOUTS[i]}"; done
+    fi
   fi
 
   # Choices of the current positional argument.
@@ -161,10 +172,17 @@ cb::_complete_at() { # dir plugin-root start word...
 cb::completion_script() {
   local f=$CB_ROOT/templates/completion.$1 tpl func
   [[ -f $f ]] || return 1
-  func=_cb_complete_${CB_NAME//[^a-zA-Z0-9_]/_}
+  # The name goes into shell code: only a valid root name (a link made by hand could be named
+  # anything). The function name keeps names apart: "my_cmd" -> my__cmd, "my-cmd" -> my_2d_cmd.
+  if ! cb::valid_root_name "$CB_NAME"; then
+    ui::error "'$CB_NAME' is not a valid root command name (lower case letters, digits, - and _): no completion"
+    return 1
+  fi
+  func=${CB_NAME//_/__}
+  func=_cb_complete_${func//-/_2d_}
   tpl=$(<"$f")
-  tpl=${tpl//__CB_FUNC__/$func}
-  tpl=${tpl//__CB_NAME__/$CB_NAME}
+  tpl=${tpl//__CB_FUNC__/"$func"}
+  tpl=${tpl//__CB_NAME__/"$CB_NAME"}
   printf '%s\n' "$tpl"
 }
 

@@ -21,6 +21,7 @@ __CB_FUNC__() {
   fi
 }
 if (( ! $+functions[compdef] )); then
-  autoload -Uz compinit && compinit
+  # -i: skip insecure directories instead of asking at every shell start.
+  autoload -Uz compinit && compinit -i
 fi
 compdef __CB_FUNC__ __CB_NAME__
